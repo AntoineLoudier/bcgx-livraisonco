@@ -30,7 +30,7 @@ ZONE_C_VACATIONS = [
 
 
 def extend_grid_to_test_period(df_clean: pd.DataFrame, df_weather: pd.DataFrame) -> pd.DataFrame:
-    """Prolonge la grille temporelle jusqu'au 11 novembre 2026 23h00 et y joint la météo."""
+    """Prolonge la grille temporelle jusqu'au 11 novembre 2026 23h00 et projette la fermeture du 11 nov."""
     print("1/5 - Extension de la grille horaire jusqu'au 11 novembre 2026 23:00...")
     min_date = df_clean["t_1h"].min()
     max_date = max(df_clean["t_1h"].max(), pd.to_datetime(TEST_END))
@@ -47,15 +47,16 @@ def extend_grid_to_test_period(df_clean: pd.DataFrame, df_weather: pd.DataFrame)
     for col in ["is_road_closed", "is_imputed_q", "is_imputed_k"]:
         df_merged[col] = df_merged[col].fillna(0).astype(int)
 
-    # Projection de l'état 'is_road_closed = 1' observé le 11 nov 2025 (08h-14h) sur le 11 nov 2026 aux Champs-Élysées
-    mask_armistice_closure_future = (
+    # Projection de 'is_road_closed = 1' observé le 11 nov 2025 (08h00-14h00) sur le 11 nov 2026 aux Champs-Élysées
+    mask_armistice_closure = (
         (df_merged["arc"] == "Champs-Elysées")
         & (df_merged["t_1h"].dt.month == 11)
         & (df_merged["t_1h"].dt.day == 11)
         & (df_merged["t_1h"].dt.hour.between(8, 14))
     )
-    df_merged.loc[mask_armistice_closure_future, "is_road_closed"] = 1
+    df_merged.loc[mask_armistice_closure, "is_road_closed"] = 1
 
+    # Jointure météo complète (Archive + Forecast)
     df_merged = pd.merge(df_merged, df_weather, on="t_1h", how="left")
     for w_col in ["temperature_2m", "precipitation", "rain", "wind_speed_10m"]:
         if w_col in df_merged.columns:
@@ -65,8 +66,8 @@ def extend_grid_to_test_period(df_clean: pd.DataFrame, df_weather: pd.DataFrame)
 
 
 def add_calendar_and_event_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Ajoute les variables calendaires, distingue les ponts de 1 jour vs 2 jours (viaduc) et cible les événements."""
-    print("2/5 - Création des variables calendaires, intensité des ponts (1j vs 2j) et événements...")
+    """Crée les variables cycliques, calendaires, l'intensité des ponts (1j vs 2j) et les événements."""
+    print("2/5 - Création des variables calendaires et distinction Pont 1j vs Pont 2j (Viaduc)...")
     df = df.copy()
     dt = df["t_1h"]
 
@@ -87,20 +88,20 @@ def add_calendar_and_event_features(df: pd.DataFrame) -> pd.DataFrame:
     df["is_weekend"] = (df["dayofweek"] >= 5).astype(int)
     df["is_public_holiday"] = dates_only.isin(FRENCH_HOLIDAYS).astype(int)
 
-    # Distinction Pont de 1 jour (intensity = 1.0) vs Pont de 2 jours / Mercredi férié (intensity = 0.5 / 0.25)
+    # Calcul des décalages calendaires à J+1, J+2, J-1, J-2 pour qualifier les ponts
     next_1d = (dt + pd.Timedelta(days=1)).dt.date
     next_2d = (dt + pd.Timedelta(days=2)).dt.date
     prev_1d = (dt - pd.Timedelta(days=1)).dt.date
     prev_2d = (dt - pd.Timedelta(days=2)).dt.date
 
-    # 1. Vrai pont de 1 jour : Lundi avant Mardi férié (ex: 10 nov 2025) ou Vendredi après Jeudi férié (ex: 15 mai 2026)
+    # Cas 1 : Pont de 1 jour (intensity = 1.0) -> Lundi avant Mardi férié (10 nov 2025) ou Vendredi après Jeudi férié (15 mai 2026)
     is_1d_bridge = (
         ((df["dayofweek"] == 0) & next_1d.isin(FRENCH_HOLIDAYS))
         | ((df["dayofweek"] == 4) & prev_1d.isin(FRENCH_HOLIDAYS))
     ) & (df["is_public_holiday"] == 0)
 
-    # 2. Pont de 2 jours (Mercredi férié comme le 11 nov 2026) :
-    # - Mardi veille (10 nov 2026) ou Jeudi lendemain : intensité modérée (0.5)
+    # Cas 2 : Pont de 2 jours / Mercredi férié (11 nov 2026) :
+    # - Mardi veille (10 nov 2026) ou Jeudi lendemain : intensité intermédiaire (0.50)
     is_2d_bridge_adjacent = (
         ((df["dayofweek"] == 1) & next_1d.isin(FRENCH_HOLIDAYS))
         | ((df["dayofweek"] == 3) & prev_1d.isin(FRENCH_HOLIDAYS))
@@ -116,7 +117,7 @@ def add_calendar_and_event_features(df: pd.DataFrame) -> pd.DataFrame:
     df.loc[is_2d_bridge_outer, "bridge_intensity"] = 0.25
     df.loc[is_2d_bridge_adjacent, "bridge_intensity"] = 0.50
     df.loc[is_1d_bridge, "bridge_intensity"] = 1.00
-    df["is_bridge_day"] = (df["bridge_intensity"] >= 0.5).astype(int)
+    df["is_bridge_day"] = (df["bridge_intensity"] >= 0.50).astype(int)
 
     # Vacances scolaires Zone C (Paris)
     is_vacation = pd.Series(False, index=df.index)
@@ -124,14 +125,14 @@ def add_calendar_and_event_features(df: pd.DataFrame) -> pd.DataFrame:
         is_vacation |= (dt >= start_v) & (dt < end_v)
     df["is_school_holiday"] = is_vacation.astype(int)
 
-    # Événements Champs-Élysées : Paris Respire (1er dimanche) & Cérémonie 11 Novembre (creux 08h-13h)
+    # Événements Champs-Élysées : Paris Respire (1er dimanche 10h-18h) & Cérémonie 11 Novembre (creux 08h-13h)
     is_first_sunday = (df["dayofweek"] == 6) & (df["day"] <= 7)
     df["is_paris_respire"] = (
         (df["arc"] == "Champs-Elysées") & is_first_sunday & (df["hour"].between(10, 18))
     ).astype(int)
 
     df["is_armistice"] = ((df["month"] == 11) & (df["day"] == 11)).astype(int)
-    df["is_armistice_champs_closure"] = (
+    df["is_armistice_parade_hours"] = (
         (df["arc"] == "Champs-Elysées") & (df["is_armistice"] == 1) & (df["hour"].between(8, 13))
     ).astype(int)
 
@@ -163,8 +164,8 @@ def add_causal_lags_and_sncf_patterns(df: pd.DataFrame) -> pd.DataFrame:
     """
     Calcule :
     1. Les lags hebdomadaires causaux (J-7, J-14, J-21) et la tendance récente (weekly_mean_3w)
-    2. Le profil historique par régime de jour
-    3. Le pattern A-1 recalibré (11 nov 2025 direct + 10 nov 2025 modulé par bridge_intensity)
+    2. Le profil historique par régime de jour (décalé de 5 jours)
+    3. Le pattern A-1 recalibré (11 nov 2025 + 10 nov 2025 pondéré par bridge_intensity)
     """
     print("4/5 - Calcul des lags hebdomadaires et du pattern A-1 modulé par l'intensité du pont...")
     df = df.copy()
@@ -193,7 +194,7 @@ def add_causal_lags_and_sncf_patterns(df: pd.DataFrame) -> pd.DataFrame:
             [df[f"{target}_lag_168h"], df[f"{target}_lag_336h"], df[f"{target}_lag_504h"]], axis=1
         ).std(axis=1)
 
-        # 2. Profil causal par 'day_regime' (décalé de 5 jours pour zéro Data Leakage)
+        # 2. Profil causal par 'day_regime' (décalé de 120h = 5 jours pour zéro Data Leakage)
         shifted_target = grp.shift(24 * 5)
         df[f"{target}_regime_hist_mean"] = (
             shifted_target.groupby([df["arc"], df["day_regime"], df["hour"]])
@@ -220,10 +221,8 @@ def add_causal_lags_and_sncf_patterns(df: pd.DataFrame) -> pd.DataFrame:
         df = df.merge(bridge_1d_2025, on=["arc", "hour"], how="left")
 
         # Construction de 'smart_expected' :
-        # - Jour normal : weekly_mean_3w
-        # - Pont (1j ou 2j) : modulation proportionnelle à bridge_intensity !
-        #   Si bridge_intensity = 1.0 (pont 1j), on applique 100% du ratio_bridge_1d_a1.
-        #   Si bridge_intensity = 0.5 (mardi 10 nov 2026), on applique seulement 50% de la baisse du pont 1j !
+        # - Jour normal : suit weekly_mean_3w
+        # - Pont (1j ou 2j) : modulation linéaire selon bridge_intensity (1.0 -> 100% effet pont, 0.5 -> 50% effet pont)
         smart_val = df[f"{target}_weekly_mean_3w"].copy()
 
         mask_any_bridge = df["bridge_intensity"] > 0
@@ -236,7 +235,7 @@ def add_causal_lags_and_sncf_patterns(df: pd.DataFrame) -> pd.DataFrame:
         mask_holidays_other = (df["is_public_holiday"] == 1) & (df["is_armistice"] == 0)
         smart_val.loc[mask_holidays_other] = df.loc[mask_holidays_other, f"{target}_regime_hist_mean"]
 
-        # - 11 Novembre (Armistice) : application du profil A-1 du 11 nov 2025 (capte les cortèges 8h-13h et le rebond de 14h)
+        # - 11 Novembre (Armistice) : application du ratio heure par heure du 11 nov 2025 (capte les cortèges 8h-13h et le rebond de 14h)
         mask_armistice = df["is_armistice"] == 1
         smart_val.loc[mask_armistice] = (
             df.loc[mask_armistice, f"{target}_weekly_mean_3w"]
