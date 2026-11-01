@@ -225,3 +225,12 @@ data/processed/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 
+# Modèles et soumissions générés
+models/*
+!models/.gitkeep
+output_*.csv
+
+# Rapports générés (garde le dossier vide sur git sans committer les fichiers)
+reports/*
+!reports/.gitkeep
+
