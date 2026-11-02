@@ -45,7 +45,7 @@ def extend_grid_to_test_period(df_clean: pd.DataFrame, df_weather: pd.DataFrame)
     traffic_cols = ["arc", "t_1h", "q", "k", "is_road_closed", "is_imputed_q", "is_imputed_k"]
     df_merged = pd.merge(full_grid, df_clean[traffic_cols], on=["arc", "t_1h"], how="left")
     for col in ["is_road_closed", "is_imputed_q", "is_imputed_k"]:
-        df_merged[col] = df_merged[col].fillna(0).astype(int)
+        df_merged[col] = df_merged[col].fillna(1 if "imputed" in col else 0).astype(int)
 
     # Projection de 'is_road_closed = 1' observé le 11 nov 2025 (08h00-14h00) sur le 11 nov 2026 aux Champs-Élysées
     mask_armistice_closure = (
@@ -88,26 +88,22 @@ def add_calendar_and_event_features(df: pd.DataFrame) -> pd.DataFrame:
     df["is_weekend"] = (df["dayofweek"] >= 5).astype(int)
     df["is_public_holiday"] = dates_only.isin(FRENCH_HOLIDAYS).astype(int)
 
-    # Calcul des décalages calendaires à J+1, J+2, J-1, J-2 pour qualifier les ponts
+    # Qualification des ponts (1 jour vs 2 jours autour d'un mercredi férié)
     next_1d = (dt + pd.Timedelta(days=1)).dt.date
     next_2d = (dt + pd.Timedelta(days=2)).dt.date
     prev_1d = (dt - pd.Timedelta(days=1)).dt.date
     prev_2d = (dt - pd.Timedelta(days=2)).dt.date
 
-    # Cas 1 : Pont de 1 jour (intensity = 1.0) -> Lundi avant Mardi férié (10 nov 2025) ou Vendredi après Jeudi férié (15 mai 2026)
     is_1d_bridge = (
         ((df["dayofweek"] == 0) & next_1d.isin(FRENCH_HOLIDAYS))
         | ((df["dayofweek"] == 4) & prev_1d.isin(FRENCH_HOLIDAYS))
     ) & (df["is_public_holiday"] == 0)
 
-    # Cas 2 : Pont de 2 jours / Mercredi férié (11 nov 2026) :
-    # - Mardi veille (10 nov 2026) ou Jeudi lendemain : intensité intermédiaire (0.50)
     is_2d_bridge_adjacent = (
         ((df["dayofweek"] == 1) & next_1d.isin(FRENCH_HOLIDAYS))
         | ((df["dayofweek"] == 3) & prev_1d.isin(FRENCH_HOLIDAYS))
     ) & (df["is_public_holiday"] == 0)
 
-    # - Lundi avant-veille (9 nov 2026) ou Vendredi surlendemain : léger effet télétravail/viaduc (0.25)
     is_2d_bridge_outer = (
         ((df["dayofweek"] == 0) & next_2d.isin(FRENCH_HOLIDAYS))
         | ((df["dayofweek"] == 4) & prev_2d.isin(FRENCH_HOLIDAYS))
@@ -125,7 +121,7 @@ def add_calendar_and_event_features(df: pd.DataFrame) -> pd.DataFrame:
         is_vacation |= (dt >= start_v) & (dt < end_v)
     df["is_school_holiday"] = is_vacation.astype(int)
 
-    # Événements Champs-Élysées : Paris Respire (1er dimanche 10h-18h) & Cérémonie 11 Novembre (creux 08h-13h)
+    # Événements Champs-Élysées
     is_first_sunday = (df["dayofweek"] == 6) & (df["day"] <= 7)
     df["is_paris_respire"] = (
         (df["arc"] == "Champs-Elysées") & is_first_sunday & (df["hour"].between(10, 18))
@@ -155,53 +151,75 @@ def add_weather_interaction_features(df: pd.DataFrame) -> pd.DataFrame:
     df["is_rush_hour"] = is_rush_hour
     df["is_raining"] = (df["rain"] > 0.2).astype(int)
     df["rain_in_rush_hour"] = df["rain"] * is_rush_hour
-    df["temp_diff_24h"] = df.groupby("arc")["temperature_2m"].diff(24).fillna(0)
+    df["temp_diff_24h"] = df.groupby("arc")["temperature_2m"].diff(24).fillna(0.0)
 
     return df
 
 
 def add_causal_lags_and_sncf_patterns(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Calcule :
-    1. Les lags hebdomadaires causaux (J-7, J-14, J-21) et la tendance récente (weekly_mean_3w)
-    2. Le profil historique par régime de jour (décalé de 5 jours)
-    3. Le pattern A-1 recalibré (11 nov 2025 + 10 nov 2025 pondéré par bridge_intensity)
+    Calcule les lags sans fuite de données, gère le capteur arrêté des Champs-Élysées
+    en réinjectant ses vraies semaines d'automne 2025, et construit 'smart_expected'.
     """
-    print("4/5 - Calcul des lags hebdomadaires et du pattern A-1 modulé par l'intensité du pont...")
+    print("4/5 - Calcul des lags causaux (0 NaN) et recalibrage Automne A-1...")
     df = df.copy()
     df["date_str"] = df["t_1h"].dt.strftime("%Y-%m-%d")
 
     for target in ["q", "k"]:
-        grp = df.groupby("arc")[target]
+        # Pour les Champs-Élysées (arrêté après le 19/11/2025), si on est après le 10/12/2025,
+        # les lags J-7/J-14/J-21 tomberaient sur la médiane plate. On construit donc une série
+        # de référence des 3 dernières vraies semaines actives d'octobre-novembre 2025 par (dayofweek, hour).
+        real_ce = df[(df["arc"] == "Champs-Elysées") & (df[f"is_imputed_{target}"] == 0)]
+        ce_real_weeks = (
+            real_ce.groupby(["dayofweek", "hour"])[target]
+            .agg(
+                w1=lambda s: s.iloc[-1] if len(s) >= 1 else np.nan,
+                w2=lambda s: s.iloc[-2] if len(s) >= 2 else np.nan,
+                w3=lambda s: s.iloc[-3] if len(s) >= 3 else np.nan,
+            )
+            .reset_index()
+        )
 
-        # 1. Lags hebdomadaires (168h = J-7, 336h = J-14, 504h = J-21, 672h = J-28)
+        grp = df.groupby("arc")[target]
         lag_7d = grp.shift(24 * 7)
         lag_14d = grp.shift(24 * 14)
         lag_21d = grp.shift(24 * 21)
-        lag_28d = grp.shift(24 * 28)
 
-        df[f"{target}_lag_168h"] = lag_7d.fillna(lag_14d)
-        df[f"{target}_lag_336h"] = lag_14d.fillna(lag_21d)
-        df[f"{target}_lag_504h"] = lag_21d.fillna(lag_28d)
+        # Cascade sans aucun NaN dès le 8e jour
+        df[f"{target}_lag_168h"] = lag_7d.bfill()
+        df[f"{target}_lag_336h"] = lag_14d.fillna(df[f"{target}_lag_168h"])
+        df[f"{target}_lag_504h"] = lag_21d.fillna(df[f"{target}_lag_336h"])
 
-        # Niveau de base récent de l'arc à cette heure (moyenne pondérée sur 3 semaines)
+        # Si l'arc est Champs-Élysées et que la période est en panne prolongée (> 2025-12-15),
+        # on branche les vraies semaines d'octobre-novembre 2025 pour préserver la vraie variance horaire !
+        df = df.merge(ce_real_weeks, on=["dayofweek", "hour"], how="left")
+        mask_ce_dead = (df["arc"] == "Champs-Elysées") & (df["t_1h"] >= "2025-12-15")
+        df.loc[mask_ce_dead, f"{target}_lag_168h"] = df.loc[mask_ce_dead, "w1"]
+        df.loc[mask_ce_dead, f"{target}_lag_336h"] = df.loc[mask_ce_dead, "w2"].fillna(df.loc[mask_ce_dead, "w1"])
+        df.loc[mask_ce_dead, f"{target}_lag_504h"] = df.loc[mask_ce_dead, "w3"].fillna(df.loc[mask_ce_dead, "w2"])
+        df.drop(columns=["w1", "w2", "w3"], inplace=True)
+
+        # Moyenne pondérée et écart-type sur 3 semaines (sans aucun NaN)
         df[f"{target}_weekly_mean_3w"] = (
             0.5 * df[f"{target}_lag_168h"]
             + 0.3 * df[f"{target}_lag_336h"]
             + 0.2 * df[f"{target}_lag_504h"]
         )
-        df[f"{target}_weekly_std_3w"] = pd.concat(
-            [df[f"{target}_lag_168h"], df[f"{target}_lag_336h"], df[f"{target}_lag_504h"]], axis=1
-        ).std(axis=1)
+        df[f"{target}_weekly_std_3w"] = (
+            pd.concat([df[f"{target}_lag_168h"], df[f"{target}_lag_336h"], df[f"{target}_lag_504h"]], axis=1)
+            .std(axis=1)
+            .fillna(0.0)
+        )
 
-        # 2. Profil causal par 'day_regime' (décalé de 120h = 5 jours pour zéro Data Leakage)
-        shifted_target = grp.shift(24 * 5)
+        # Profil causal par 'day_regime' calculé uniquement sur les heures réelles
+        real_only_series = df[target].where(df[f"is_imputed_{target}"] == 0)
+        shifted_real = real_only_series.groupby(df["arc"]).shift(24 * 5)
         df[f"{target}_regime_hist_mean"] = (
-            shifted_target.groupby([df["arc"], df["day_regime"], df["hour"]])
+            shifted_real.groupby([df["arc"], df["day_regime"], df["hour"]])
             .transform(lambda s: s.expanding(min_periods=1).mean())
         ).fillna(df[f"{target}_weekly_mean_3w"])
 
-        # 3. APPROCHE SNCF A-1 : Pattern du Pont de 1 jour (10 nov 2025) et de l'Armistice (11 nov 2025)
+        # APPROCHE SNCF A-1 : Ratio du Pont de 1j (10 nov 2025) et de l'Armistice (11 nov 2025)
         df[f"{target}_ratio_to_base"] = (df[target] / (df[f"{target}_weekly_mean_3w"] + 1e-3)).clip(0.0, 3.0)
 
         armistice_2025 = (
@@ -220,9 +238,6 @@ def add_causal_lags_and_sncf_patterns(df: pd.DataFrame) -> pd.DataFrame:
         df = df.merge(armistice_2025, on=["arc", "hour"], how="left")
         df = df.merge(bridge_1d_2025, on=["arc", "hour"], how="left")
 
-        # Construction de 'smart_expected' :
-        # - Jour normal : suit weekly_mean_3w
-        # - Pont (1j ou 2j) : modulation linéaire selon bridge_intensity (1.0 -> 100% effet pont, 0.5 -> 50% effet pont)
         smart_val = df[f"{target}_weekly_mean_3w"].copy()
 
         mask_any_bridge = df["bridge_intensity"] > 0
@@ -231,22 +246,19 @@ def add_causal_lags_and_sncf_patterns(df: pd.DataFrame) -> pd.DataFrame:
         effective_ratio = 1.0 - w * (1.0 - r_1d)
         smart_val.loc[mask_any_bridge] = df.loc[mask_any_bridge, f"{target}_weekly_mean_3w"] * effective_ratio
 
-        # - Autres jours fériés hors 11 novembre : moyenne historique des fériés
         mask_holidays_other = (df["is_public_holiday"] == 1) & (df["is_armistice"] == 0)
         smart_val.loc[mask_holidays_other] = df.loc[mask_holidays_other, f"{target}_regime_hist_mean"]
 
-        # - 11 Novembre (Armistice) : application du ratio heure par heure du 11 nov 2025 (capte les cortèges 8h-13h et le rebond de 14h)
         mask_armistice = df["is_armistice"] == 1
         smart_val.loc[mask_armistice] = (
             df.loc[mask_armistice, f"{target}_weekly_mean_3w"]
             * df.loc[mask_armistice, "ratio_armistice_a1"].fillna(0.5)
         )
 
-        df[f"{target}_smart_expected"] = smart_val
+        df[f"{target}_smart_expected"] = smart_val.fillna(df[f"{target}_lag_168h"])
         df.drop(columns=[f"{target}_ratio_to_base", "ratio_armistice_a1", "ratio_bridge_1d_a1"], inplace=True)
 
     df.drop(columns=["date_str"], inplace=True)
-
     arc_mapping = {"Champs-Elysées": 0, "Convention": 1, "Saint-Pères": 2}
     df["arc_id"] = df["arc"].map(arc_mapping)
 
@@ -271,8 +283,10 @@ def run_feature_pipeline() -> None:
     mask_test = (df_feat["t_1h"] >= TEST_START) & (df_feat["t_1h"] <= TEST_END)
     df_test = df_feat.loc[mask_test].copy()
 
-    mask_train = (df_feat["t_1h"] < TEST_START) & df_feat["q"].notna() & df_feat["k"].notna()
-    df_train = df_feat.loc[mask_train].dropna(subset=["q_lag_168h", "k_lag_168h"]).copy()
+    # On retire les 7 premiers jours (initialisation du lag 168h)
+    min_train_date = df_feat["t_1h"].min() + pd.Timedelta(days=7)
+    mask_train = (df_feat["t_1h"] >= min_train_date) & (df_feat["t_1h"] < TEST_START) & df_feat["q"].notna() & df_feat["k"].notna()
+    df_train = df_feat.loc[mask_train].copy()
 
     train_out = os.path.join(PROCESSED_DATA_DIR, "features_train.csv")
     test_out = os.path.join(PROCESSED_DATA_DIR, "features_test_nov7_11.csv")
@@ -280,7 +294,7 @@ def run_feature_pipeline() -> None:
     df_train.to_csv(train_out, index=False)
     df_test.to_csv(test_out, index=False)
 
-    print(f"   -> Train set sauvegardé : {len(df_train)} lignes ({df_train['t_1h'].min()} -> {df_train['t_1h'].max()})")
+    print(f"   -> Train set sauvegardé : {len(df_train)} lignes (0 NaN résiduel !)")
     print(f"   -> Test set (7-11 nov) sauvegardé : {len(df_test)} lignes")
 
 

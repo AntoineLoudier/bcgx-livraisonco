@@ -6,35 +6,41 @@ import pandas as pd
 RAW_DATA_DIR = os.path.join("data", "raw")
 PARIS_COORDS = {"latitude": 48.8566, "longitude": 2.3522}
 
+# Définition exacte des 3 arcs du brief BCG X (Slide 8 & Slide 13)
+# Pour les Champs-Élysées, on inclut les deux casses ('Av_' et 'AV_') visibles sur la Slide 8
 TARGET_ARCS = [
     {
         "arc_name": "Champs-Elysées",
-        "amont": "Av_Champs_Elysees-Washington",
-        "aval": "Av_Champs_Elysees-Berri",
+        "amont": ["Av_Champs_Elysees-Washington", "AV_Champs_Elysees-Washington"],
+        "aval": ["Av_Champs_Elysees-Berri", "AV_Champs_Elysees-Berri"],
     },
     {
         "arc_name": "Convention",
-        "amont": "Lecourbe-Convention",
-        "aval": "Convention-Blomet",
+        "amont": ["Lecourbe-Convention"],
+        "aval": ["Convention-Blomet"],
     },
     {
         "arc_name": "Saint-Pères",
-        "amont": "Sts_Peres-Voltaire",
-        "aval": "Sts_Peres-Universite",
+        "amont": ["Sts_Peres-Voltaire"],
+        "aval": ["Sts_Peres-Universite"],
     },
 ]
 
 
-def download_paris_traffic(start_date: str = "2023-01-01") -> pd.DataFrame:
+def download_paris_traffic(start_date: str = "2025-09-01") -> pd.DataFrame:
     """Télécharge les données des 3 arcs exacts (filtrés par noeud amont et aval)."""
     os.makedirs(RAW_DATA_DIR, exist_ok=True)
     output_path = os.path.join(RAW_DATA_DIR, "traffic_raw.csv")
 
-    # Construction du filtre ODSQL exact sur les couples (noeud amont, noeud aval)
-    arc_conditions = [
-        f"(libelle_nd_amont = '{a['amont']}' AND libelle_nd_aval = '{a['aval']}')"
-        for a in TARGET_ARCS
-    ]
+    # Construction du filtre ODSQL acceptant les variantes de casse ('Av_' / 'AV_')
+    arc_conditions = []
+    for a in TARGET_ARCS:
+        amont_list = ", ".join(f"'{x}'" for x in a["amont"])
+        aval_list = ", ".join(f"'{x}'" for x in a["aval"])
+        arc_conditions.append(
+            f"(libelle_nd_amont IN ({amont_list}) AND libelle_nd_aval IN ({aval_list}))"
+        )
+
     where_clause = f"({' OR '.join(arc_conditions)}) AND t_1h >= '{start_date}T00:00:00'"
 
     params = {
@@ -54,23 +60,34 @@ def download_paris_traffic(start_date: str = "2023-01-01") -> pd.DataFrame:
 
     df = pd.read_csv(output_path, sep=";")
 
-    # Mapping vers le nom exact attendu par la fonction de test BCG X 
-    amont_to_name = {a["amont"]: a["arc_name"] for a in TARGET_ARCS}
+    # Mapping de toutes les variantes de noeud amont vers les 3 noms officiels (Slide 13)
+    amont_to_name = {
+        amont_val: a["arc_name"]
+        for a in TARGET_ARCS
+        for amont_val in a["amont"]
+    }
     df["arc"] = df["libelle_nd_amont"].map(amont_to_name)
     df.to_csv(output_path, sep=";", index=False)
 
-    print(f"Trafic sauvegardé : {len(df)} lignes -> {output_path}")
-    print("Répartition par arc :\n", df["arc"].value_counts())
+    print(f"\nTrafic sauvegardé : {len(df)} lignes -> {output_path}")
+    print("\n--- Diagnostic des données brutes téléchargées par Arc ---")
+    df_diag = df.dropna(subset=["q", "k"], how="all").copy()
+    df_diag["t_1h"] = pd.to_datetime(df_diag["t_1h"], utc=True)
+    for arc_name, grp in df_diag.groupby("arc"):
+        print(
+            f"  * {arc_name:15s} : {len(grp):5d} mesures valides | "
+            f"Du {grp['t_1h'].min().strftime('%Y-%m-%d %H:%M')} au {grp['t_1h'].max().strftime('%Y-%m-%d %H:%M')} | "
+            f"Libellés trouvés : {grp['libelle'].unique().tolist()}"
+        )
     return df
 
 
-def download_paris_weather(start_date: str = "2023-01-01") -> pd.DataFrame:
-    """Combine l'historique météo (Archive) et les prévisions (Forecast) jusqu'à J+14."""
+def download_paris_weather(start_date: str = "2025-09-01") -> pd.DataFrame:
+    """Combine l'historique météo (Archive) et les prévisions (Forecast) jusqu'à J+16."""
     os.makedirs(RAW_DATA_DIR, exist_ok=True)
     output_path = os.path.join(RAW_DATA_DIR, "weather_raw.csv")
     hourly_vars = ["temperature_2m", "precipitation", "rain", "wind_speed_10m"]
 
-    # 1. Météo historique (Archive jusqu'à J-5)
     archive_end = (datetime.now() - timedelta(days=5)).strftime("%Y-%m-%d")
     params_hist = {
         **PARIS_COORDS,
@@ -83,7 +100,6 @@ def download_paris_weather(start_date: str = "2023-01-01") -> pd.DataFrame:
     r_hist.raise_for_status()
     df_hist = pd.DataFrame(r_hist.json()["hourly"]).rename(columns={"time": "t_1h"})
 
-    # 2. Météo récente (5 derniers jours) + Prévisions futures (jusqu'à 16 jours, couvre 7-11 nov)
     params_fcst = {
         **PARIS_COORDS,
         "past_days": 7,
@@ -95,15 +111,14 @@ def download_paris_weather(start_date: str = "2023-01-01") -> pd.DataFrame:
     r_fcst.raise_for_status()
     df_fcst = pd.DataFrame(r_fcst.json()["hourly"]).rename(columns={"time": "t_1h"})
 
-    # 3. Concaténation sans trou ni doublon (donne la priorité aux observations récentes)
     df_weather = pd.concat([df_hist, df_fcst], ignore_index=True)
     df_weather = df_weather.drop_duplicates(subset=["t_1h"], keep="last").sort_values("t_1h")
     df_weather.to_csv(output_path, index=False)
 
-    print(f"Météo complète (Archive + Forecast) sauvegardée : {len(df_weather)} lignes -> {output_path}")
+    print(f"\nMétéo complète (Archive + Forecast) sauvegardée : {len(df_weather)} lignes -> {output_path}")
     return df_weather
 
 
 if __name__ == "__main__":
-    download_paris_traffic(start_date="2023-01-01")
-    download_paris_weather(start_date="2023-01-01")
+    download_paris_traffic(start_date="2025-09-01")
+    download_paris_weather(start_date="2025-09-01")
