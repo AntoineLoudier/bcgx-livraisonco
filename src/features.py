@@ -66,8 +66,8 @@ def extend_grid_to_test_period(df_clean: pd.DataFrame, df_weather: pd.DataFrame)
 
 
 def add_calendar_and_event_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Crée les variables cycliques, calendaires, l'intensité des ponts (1j vs 2j) et les événements."""
-    print("2/5 - Création des variables calendaires et distinction Pont 1j vs Pont 2j (Viaduc)...")
+    """Crée les variables cycliques, calendaires, distingue Petites Vacances vs Été, et qualifie les ponts."""
+    print("2/5 - Création des variables calendaires (Petites vacances vs Été) et Pont 1j vs 2j...")
     df = df.copy()
     dt = df["t_1h"]
 
@@ -115,11 +115,14 @@ def add_calendar_and_event_features(df: pd.DataFrame) -> pd.DataFrame:
     df.loc[is_1d_bridge, "bridge_intensity"] = 1.00
     df["is_bridge_day"] = (df["bridge_intensity"] >= 0.50).astype(int)
 
-    # Vacances scolaires Zone C (Paris)
+    # Séparation cruciale : Petites Vacances Scolaires (Toussaint/Noël/Hiver/Printemps) vs Été (Juillet/Août)
     is_vacation = pd.Series(False, index=df.index)
     for start_v, end_v in ZONE_C_VACATIONS:
         is_vacation |= (dt >= start_v) & (dt < end_v)
-    df["is_school_holiday"] = is_vacation.astype(int)
+
+    is_summer = df["month"].isin([7, 8])
+    df["is_school_holiday"] = (is_vacation & (~is_summer)).astype(int)
+    df["is_summer_holiday"] = is_summer.astype(int)
 
     # Événements Champs-Élysées
     is_first_sunday = (df["dayofweek"] == 6) & (df["day"] <= 7)
@@ -158,20 +161,52 @@ def add_weather_interaction_features(df: pd.DataFrame) -> pd.DataFrame:
 
 def add_causal_lags_and_sncf_patterns(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Calcule les lags sans fuite de données, gère le capteur arrêté des Champs-Élysées
-    en réinjectant ses vraies semaines d'automne 2025, et construit 'smart_expected'.
+    100% Causal (Zéro Data Leakage) :
+    - Utilise la série continue (imputée causalement dans preprocessing.py) pour les lags J-7 à J-28.
+    - Pour le test (7-11 nov), si les derniers jours (ex: 3-4 nov) ne sont pas encore téléchargés,
+      bascule proprement sur J-14.
+    - Les ratios A-1 du 10 et 11 novembre 2025 ne sont appliqués qu'après le 12 novembre 2025.
     """
-    print("4/5 - Calcul des lags causaux (0 NaN) et recalibrage Automne A-1...")
+    print("4/5 - Calcul des Clean Lags 100% causaux, sans double comptage vacances, et pattern A-1...")
     df = df.copy()
     df["date_str"] = df["t_1h"].dt.strftime("%Y-%m-%d")
 
+    is_special_hour = (
+        (df["is_public_holiday"] == 1)
+        | (df["is_bridge_day"] == 1)
+        | (df["is_road_closed"] == 1)
+        | (df["is_paris_respire"] == 1)
+    )
+    lag7_was_special = is_special_hour.groupby(df["arc"]).shift(24 * 7).fillna(False)
+    lag14_was_special = is_special_hour.groupby(df["arc"]).shift(24 * 14).fillna(False)
+
     for target in ["q", "k"]:
-        # Pour les Champs-Élysées (arrêté après le 19/11/2025), si on est après le 10/12/2025,
-        # les lags J-7/J-14/J-21 tomberaient sur la médiane plate. On construit donc une série
-        # de référence des 3 dernières vraies semaines actives d'octobre-novembre 2025 par (dayofweek, hour).
-        real_ce = df[(df["arc"] == "Champs-Elysées") & (df[f"is_imputed_{target}"] == 0)]
+        # On utilise la série continue issue de preprocessing.py (qui est déjà 100% causale)
+        grp = df.groupby("arc")[target]
+        lag_7d = grp.shift(24 * 7)
+        lag_14d = grp.shift(24 * 14)
+        lag_21d = grp.shift(24 * 21)
+
+        # Cascade strictement causale (aucun bfill !) : gère à la fois le début du dataset et les 71h du test avant le 5 nov
+        df[f"{target}_lag_672h"] = lag_28d.fillna(lag_21d).fillna(lag_14d).fillna(lag_7d)
+        df[f"{target}_lag_504h"] = lag_21d.fillna(lag_14d).fillna(lag_7d).fillna(df[f"{target}_lag_672h"])
+        df[f"{target}_lag_336h"] = lag_14d.fillna(df[f"{target}_lag_504h"])
+        df[f"{target}_lag_168h"] = lag_7d.fillna(df[f"{target}_lag_336h"])
+
+        # Nettoyage des lags pollués par un jour férié/fermé à J-7 ou J-14
+        clean_7d = np.where((~is_special_hour) & lag7_was_special, df[f"{target}_lag_336h"], df[f"{target}_lag_168h"])
+        clean_14d = np.where((~is_special_hour) & lag14_was_special, df[f"{target}_lag_504h"], df[f"{target}_lag_336h"])
+        df[f"{target}_lag_168h"] = clean_7d
+        df[f"{target}_lag_336h"] = clean_14d
+
+        # Ancrage Automne 2025 pour Champs-Élysées (uniquement après le 2025-12-15 -> 0 fuite !)
+        real_ce_2025 = df[
+            (df["arc"] == "Champs-Elysées")
+            & (df[f"is_imputed_{target}"] == 0)
+            & (df["t_1h"] <= "2025-11-19 23:00:00")
+        ]
         ce_real_weeks = (
-            real_ce.groupby(["dayofweek", "hour"])[target]
+            real_ce_2025.groupby(["dayofweek", "hour"])[target]
             .agg(
                 w1=lambda s: s.iloc[-1] if len(s) >= 1 else np.nan,
                 w2=lambda s: s.iloc[-2] if len(s) >= 2 else np.nan,
@@ -179,31 +214,19 @@ def add_causal_lags_and_sncf_patterns(df: pd.DataFrame) -> pd.DataFrame:
             )
             .reset_index()
         )
-
-        grp = df.groupby("arc")[target]
-        lag_7d = grp.shift(24 * 7)
-        lag_14d = grp.shift(24 * 14)
-        lag_21d = grp.shift(24 * 21)
-
-        # Cascade sans aucun NaN dès le 8e jour
-        df[f"{target}_lag_168h"] = lag_7d.bfill()
-        df[f"{target}_lag_336h"] = lag_14d.fillna(df[f"{target}_lag_168h"])
-        df[f"{target}_lag_504h"] = lag_21d.fillna(df[f"{target}_lag_336h"])
-
-        # Si l'arc est Champs-Élysées et que la période est en panne prolongée (> 2025-12-15),
-        # on branche les vraies semaines d'octobre-novembre 2025 pour préserver la vraie variance horaire !
         df = df.merge(ce_real_weeks, on=["dayofweek", "hour"], how="left")
         mask_ce_dead = (df["arc"] == "Champs-Elysées") & (df["t_1h"] >= "2025-12-15")
         df.loc[mask_ce_dead, f"{target}_lag_168h"] = df.loc[mask_ce_dead, "w1"]
         df.loc[mask_ce_dead, f"{target}_lag_336h"] = df.loc[mask_ce_dead, "w2"].fillna(df.loc[mask_ce_dead, "w1"])
         df.loc[mask_ce_dead, f"{target}_lag_504h"] = df.loc[mask_ce_dead, "w3"].fillna(df.loc[mask_ce_dead, "w2"])
+        df.loc[mask_ce_dead, f"{target}_lag_672h"] = df.loc[mask_ce_dead, "w1"]
         df.drop(columns=["w1", "w2", "w3"], inplace=True)
 
-        # Moyenne pondérée et écart-type sur 3 semaines (sans aucun NaN)
+        # Moyenne pondérée pure sur 3 semaines (sans distorsion pour éviter le double comptage avec XGBoost)
         df[f"{target}_weekly_mean_3w"] = (
-            0.5 * df[f"{target}_lag_168h"]
-            + 0.3 * df[f"{target}_lag_336h"]
-            + 0.2 * df[f"{target}_lag_504h"]
+            0.60 * df[f"{target}_lag_168h"]
+            + 0.25 * df[f"{target}_lag_336h"]
+            + 0.15 * df[f"{target}_lag_504h"]
         )
         df[f"{target}_weekly_std_3w"] = (
             pd.concat([df[f"{target}_lag_168h"], df[f"{target}_lag_336h"], df[f"{target}_lag_504h"]], axis=1)
@@ -211,15 +234,25 @@ def add_causal_lags_and_sncf_patterns(df: pd.DataFrame) -> pd.DataFrame:
             .fillna(0.0)
         )
 
-        # Profil causal par 'day_regime' calculé uniquement sur les heures réelles
+        # Profil causal par (arc, day_regime, is_school_holiday, hour) calculé sur les vraies mesures
         real_only_series = df[target].where(df[f"is_imputed_{target}"] == 0)
         shifted_real = real_only_series.groupby(df["arc"]).shift(24 * 5)
-        df[f"{target}_regime_hist_mean"] = (
-            shifted_real.groupby([df["arc"], df["day_regime"], df["hour"]])
+        prof_sch = (
+            shifted_real.groupby([df["arc"], df["day_regime"], df["is_school_holiday"], df["hour"]])
+            .transform(lambda s: s.expanding(min_periods=2).mean())
+        )
+        prof_all = (
+            shifted_real.groupby([df["arc"], df["dayofweek"], df["hour"]])
             .transform(lambda s: s.expanding(min_periods=1).mean())
-        ).fillna(df[f"{target}_weekly_mean_3w"])
+        )
+        df[f"{target}_regime_hist_mean"] = prof_sch.fillna(prof_all).fillna(df[f"{target}_weekly_mean_3w"])
 
-        # APPROCHE SNCF A-1 : Ratio du Pont de 1j (10 nov 2025) et de l'Armistice (11 nov 2025)
+        df[f"{target}_hour_p90"] = (
+            shifted_real.groupby([df["arc"], df["dayofweek"], df["hour"]])
+            .transform(lambda s: s.expanding(min_periods=3).quantile(0.90))
+        ).fillna(df[f"{target}_weekly_mean_3w"] * 1.25)
+
+        # Ratios A-1 du 10 nov 2025 et du 11 nov 2025 (appliqués uniquement après le 12 nov 2025 -> 0 fuite !)
         df[f"{target}_ratio_to_base"] = (df[target] / (df[f"{target}_weekly_mean_3w"] + 1e-3)).clip(0.0, 3.0)
 
         armistice_2025 = (
@@ -239,20 +272,30 @@ def add_causal_lags_and_sncf_patterns(df: pd.DataFrame) -> pd.DataFrame:
         df = df.merge(bridge_1d_2025, on=["arc", "hour"], how="left")
 
         smart_val = df[f"{target}_weekly_mean_3w"].copy()
+        is_after_nov2025 = df["t_1h"] >= "2025-11-12"
 
-        mask_any_bridge = df["bridge_intensity"] > 0
-        w = df.loc[mask_any_bridge, "bridge_intensity"]
-        r_1d = df.loc[mask_any_bridge, "ratio_bridge_1d_a1"].fillna(0.85)
-        effective_ratio = 1.0 - w * (1.0 - r_1d)
-        smart_val.loc[mask_any_bridge] = df.loc[mask_any_bridge, f"{target}_weekly_mean_3w"] * effective_ratio
+        # 1. Ponts après nov 2025 : modulation par bridge_intensity
+        mask_bridge_future = (df["bridge_intensity"] > 0) & is_after_nov2025
+        w = df.loc[mask_bridge_future, "bridge_intensity"]
+        r_1d = df.loc[mask_bridge_future, "ratio_bridge_1d_a1"].fillna(0.85)
+        smart_val.loc[mask_bridge_future] = df.loc[mask_bridge_future, f"{target}_weekly_mean_3w"] * (1.0 - w * (1.0 - r_1d))
 
-        mask_holidays_other = (df["is_public_holiday"] == 1) & (df["is_armistice"] == 0)
-        smart_val.loc[mask_holidays_other] = df.loc[mask_holidays_other, f"{target}_regime_hist_mean"]
+        # Pont en 2025 (train) : coefficient a priori
+        mask_bridge_2025 = (df["bridge_intensity"] > 0) & (~is_after_nov2025)
+        smart_val.loc[mask_bridge_2025] = df.loc[mask_bridge_2025, f"{target}_weekly_mean_3w"] * (
+            1.0 - 0.15 * df.loc[mask_bridge_2025, "bridge_intensity"]
+        )
 
-        mask_armistice = df["is_armistice"] == 1
-        smart_val.loc[mask_armistice] = (
-            df.loc[mask_armistice, f"{target}_weekly_mean_3w"]
-            * df.loc[mask_armistice, "ratio_armistice_a1"].fillna(0.5)
+        # 2. Jours fériés hors Armistice 2026 : abattement relatif de 20% par rapport au niveau des 3 dernières semaines
+        # (évite d'injecter un niveau d'hiver au 15 août !)
+        mask_holidays_causal = (df["is_public_holiday"] == 1) & (~((df["is_armistice"] == 1) & is_after_nov2025))
+        smart_val.loc[mask_holidays_causal] = df.loc[mask_holidays_causal, f"{target}_weekly_mean_3w"] * 0.80
+
+        # 3. Armistice en 2026 (11 nov 2026) : profil exact A-1 du 11 nov 2025
+        mask_armistice_2026 = (df["is_armistice"] == 1) & is_after_nov2025
+        smart_val.loc[mask_armistice_2026] = (
+            df.loc[mask_armistice_2026, f"{target}_weekly_mean_3w"]
+            * df.loc[mask_armistice_2026, "ratio_armistice_a1"].fillna(0.5)
         )
 
         df[f"{target}_smart_expected"] = smart_val.fillna(df[f"{target}_lag_168h"])
@@ -266,7 +309,7 @@ def add_causal_lags_and_sncf_patterns(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def run_feature_pipeline() -> None:
-    """Exécute le pipeline de Feature Engineering et sauvegarde train et test (7-11 nov)."""
+    """Exécute le pipeline de Feature Engineering et sauvegarde train (100% réel) et test (360 lignes sans NaN)."""
     clean_path = os.path.join(PROCESSED_DATA_DIR, "traffic_clean.csv")
     weather_path = os.path.join(RAW_DATA_DIR, "weather_raw.csv")
 
@@ -279,13 +322,22 @@ def run_feature_pipeline() -> None:
     df_feat = add_weather_interaction_features(df_feat)
     df_feat = add_causal_lags_and_sncf_patterns(df_feat)
 
-    print("5/5 - Séparation et sauvegarde de features_train.csv et features_test_nov7_11.csv...")
+    print("5/5 - Séparation et sauvegarde de features_train.csv (100% mesures réelles) et features_test_nov7_11.csv...")
     mask_test = (df_feat["t_1h"] >= TEST_START) & (df_feat["t_1h"] <= TEST_END)
     df_test = df_feat.loc[mask_test].copy()
 
-    # On retire les 7 premiers jours (initialisation du lag 168h)
+    # CORRECTION DU POINT 5 DE TON AMI :
+    # On ne conserve dans features_train.csv QUE les observations 100% réelles (is_imputed == 0)
+    # après les 7 premiers jours d'initialisation du lag J-7 !
     min_train_date = df_feat["t_1h"].min() + pd.Timedelta(days=7)
-    mask_train = (df_feat["t_1h"] >= min_train_date) & (df_feat["t_1h"] < TEST_START) & df_feat["q"].notna() & df_feat["k"].notna()
+    mask_train = (
+        (df_feat["t_1h"] >= min_train_date)
+        & (df_feat["t_1h"] < TEST_START)
+        & (df_feat["is_imputed_q"] == 0)
+        & (df_feat["is_imputed_k"] == 0)
+        & df_feat["q_lag_168h"].notna()
+        & df_feat["k_lag_168h"].notna()
+    )
     df_train = df_feat.loc[mask_train].copy()
 
     train_out = os.path.join(PROCESSED_DATA_DIR, "features_train.csv")
@@ -294,8 +346,9 @@ def run_feature_pipeline() -> None:
     df_train.to_csv(train_out, index=False)
     df_test.to_csv(test_out, index=False)
 
-    print(f"   -> Train set sauvegardé : {len(df_train)} lignes (0 NaN résiduel !)")
-    print(f"   -> Test set (7-11 nov) sauvegardé : {len(df_test)} lignes")
+    test_nans = df_test.drop(columns=["q", "k"]).isna().sum().sum()
+    print(f"   -> Train set sauvegardé : {len(df_train)} lignes 100% réelles -> {train_out}")
+    print(f"   -> Test set (7-11 nov) sauvegardé : {len(df_test)} lignes (Nombre de NaN dans les features X : {test_nans}) -> {test_out}")
 
 
 if __name__ == "__main__":
