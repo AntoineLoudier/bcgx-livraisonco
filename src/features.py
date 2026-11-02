@@ -8,6 +8,8 @@ PROCESSED_DATA_DIR = os.path.join("data", "processed")
 # Fenêtre officielle à prédire pour le Livrable 1 (Slide 11 & 13 du Brief BCG X)
 TEST_START = "2026-11-07 00:00:00"
 TEST_END = "2026-11-11 23:00:00"
+FORECAST_CUTOFF = pd.Timestamp("2026-11-06 23:00:00")
+FORECAST_HORIZON = pd.Timedelta(hours=120)
 ARCS = ["Champs-Elysées", "Convention", "Saint-Pères"]
 
 # Jours fériés sur la fenêtre glissante de 13 mois (Octobre 2025 - Novembre 2026)
@@ -58,10 +60,6 @@ def extend_grid_to_test_period(df_clean: pd.DataFrame, df_weather: pd.DataFrame)
 
     # Jointure météo complète (Archive + Forecast)
     df_merged = pd.merge(df_merged, df_weather, on="t_1h", how="left")
-    for w_col in ["temperature_2m", "precipitation", "rain", "wind_speed_10m"]:
-        if w_col in df_merged.columns:
-            df_merged[w_col] = df_merged.groupby("arc")[w_col].transform(lambda s: s.ffill().bfill())
-
     return df_merged.sort_values(["arc", "t_1h"]).reset_index(drop=True)
 
 
@@ -156,113 +154,95 @@ def add_weather_interaction_features(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def add_causal_lags_and_sncf_patterns(df: pd.DataFrame) -> pd.DataFrame:
+def add_causal_lags_and_sncf_patterns(
+    df: pd.DataFrame,
+    forecast_start: pd.Timestamp | None = None,
+    forecast_cutoff: pd.Timestamp | None = None,
+) -> pd.DataFrame:
+    """Construit des variables à partir des seules mesures disponibles à l'émission.
+
+    Chaque ligne historique simule une prévision à cinq jours. Pour la fenêtre
+    finale, aucune mesure postérieure au gel du 6 novembre n'est utilisée.
     """
-    Calcule les lags sans fuite de données, gère le capteur arrêté des Champs-Élysées
-    en réinjectant ses vraies semaines d'automne 2025, et construit 'smart_expected'.
-    """
-    print("4/5 - Calcul des lags causaux (0 NaN) et recalibrage Automne A-1...")
-    df = df.copy()
-    df["date_str"] = df["t_1h"].dt.strftime("%Y-%m-%d")
+    df = df.sort_values(["arc", "t_1h"]).reset_index(drop=True).copy()
+    available_at = df["t_1h"] - FORECAST_HORIZON
+    if (forecast_start is None) != (forecast_cutoff is None):
+        raise ValueError("forecast_start et forecast_cutoff doivent être fournis ensemble")
+    if forecast_start is not None:
+        forecast_start, forecast_cutoff = pd.Timestamp(forecast_start), pd.Timestamp(forecast_cutoff)
+        if forecast_cutoff >= forecast_start:
+            raise ValueError("La date d'émission doit précéder la fenêtre de prévision")
+        available_at = available_at.where(df["t_1h"] < forecast_start, forecast_cutoff)
+    else:
+        test = df["t_1h"] >= pd.Timestamp(TEST_START)
+        available_at = available_at.where(~test, available_at.clip(upper=FORECAST_CUTOFF))
+    df["available_at"] = available_at
+
+    def historical_lookup(source, keys, columns):
+        left = df[keys + ["available_at"]].copy()
+        left["_row"] = np.arange(len(left))
+        right = source[keys + ["t_1h"] + columns].rename(columns={"t_1h": "observed_at"})
+        if right.empty:
+            return pd.DataFrame(np.nan, index=df.index, columns=columns)
+        result = pd.merge_asof(
+            left.sort_values("available_at"), right.sort_values("observed_at"),
+            left_on="available_at", right_on="observed_at", by=keys,
+            direction="backward", allow_exact_matches=True,
+        ).sort_values("_row")
+        return result[columns].reset_index(drop=True)
 
     for target in ["q", "k"]:
-        # Pour les Champs-Élysées (arrêté après le 19/11/2025), si on est après le 10/12/2025,
-        # les lags J-7/J-14/J-21 tomberaient sur la médiane plate. On construit donc une série
-        # de référence des 3 dernières vraies semaines actives d'octobre-novembre 2025 par (dayofweek, hour).
-        real_ce = df[(df["arc"] == "Champs-Elysées") & (df[f"is_imputed_{target}"] == 0)]
-        ce_real_weeks = (
-            real_ce.groupby(["dayofweek", "hour"])[target]
-            .agg(
-                w1=lambda s: s.iloc[-1] if len(s) >= 1 else np.nan,
-                w2=lambda s: s.iloc[-2] if len(s) >= 2 else np.nan,
-                w3=lambda s: s.iloc[-3] if len(s) >= 3 else np.nan,
-            )
-            .reset_index()
-        )
+        group = df.groupby("arc")[target]
+        for days in (7, 14, 21):
+            lag = group.shift(24 * days)
+            known = df["t_1h"] - pd.Timedelta(days=days) <= df["available_at"]
+            df[f"{target}_lag_{days * 24}h"] = lag.where(known)
 
-        grp = df.groupby("arc")[target]
-        lag_7d = grp.shift(24 * 7)
-        lag_14d = grp.shift(24 * 14)
-        lag_21d = grp.shift(24 * 21)
+        # En cas de capteur indisponible, utiliser seulement les dernières
+        # observations effectivement connues au moment de la prévision.
+        real = df[(df["arc"] == "Champs-Elysées") & (df[f"is_imputed_{target}"] == 0) & df[target].notna()].copy()
+        keys = ["arc", "dayofweek", "hour"]
+        for i in range(3):
+            real[f"real_week_{i}"] = real.groupby(keys)[target].shift(i)
+        past = historical_lookup(real, keys, [f"real_week_{i}" for i in range(3)])
+        dead = (df["arc"] == "Champs-Elysées") & (df["t_1h"] >= "2025-12-15")
+        for i, days in enumerate((7, 14, 21)):
+            df.loc[dead, f"{target}_lag_{days * 24}h"] = past.loc[dead, f"real_week_{i}"]
 
-        # Cascade sans aucun NaN dès le 8e jour
-        df[f"{target}_lag_168h"] = lag_7d.bfill()
-        df[f"{target}_lag_336h"] = lag_14d.fillna(df[f"{target}_lag_168h"])
-        df[f"{target}_lag_504h"] = lag_21d.fillna(df[f"{target}_lag_336h"])
+        lags = [f"{target}_lag_{days * 24}h" for days in (7, 14, 21)]
+        df[f"{target}_weekly_mean_3w"] = sum(df[col] * weight for col, weight in zip(lags, (0.5, 0.3, 0.2)))
+        df[f"{target}_weekly_std_3w"] = df[lags].std(axis=1)
 
-        # Si l'arc est Champs-Élysées et que la période est en panne prolongée (> 2025-12-15),
-        # on branche les vraies semaines d'octobre-novembre 2025 pour préserver la vraie variance horaire !
-        df = df.merge(ce_real_weeks, on=["dayofweek", "hour"], how="left")
-        mask_ce_dead = (df["arc"] == "Champs-Elysées") & (df["t_1h"] >= "2025-12-15")
-        df.loc[mask_ce_dead, f"{target}_lag_168h"] = df.loc[mask_ce_dead, "w1"]
-        df.loc[mask_ce_dead, f"{target}_lag_336h"] = df.loc[mask_ce_dead, "w2"].fillna(df.loc[mask_ce_dead, "w1"])
-        df.loc[mask_ce_dead, f"{target}_lag_504h"] = df.loc[mask_ce_dead, "w3"].fillna(df.loc[mask_ce_dead, "w2"])
-        df.drop(columns=["w1", "w2", "w3"], inplace=True)
+        # Le régime appartient à l'observation passée, pas à la ligne décalée.
+        real = df[(df[f"is_imputed_{target}"] == 0) & df[target].notna()].copy()
+        regime_keys = ["arc", "day_regime", "hour"]
+        real["history_mean"] = real.groupby(regime_keys)[target].transform(lambda s: s.expanding().mean())
+        history = historical_lookup(real, regime_keys, ["history_mean"])["history_mean"]
+        df[f"{target}_regime_hist_mean"] = history.fillna(df[f"{target}_weekly_mean_3w"])
 
-        # Moyenne pondérée et écart-type sur 3 semaines (sans aucun NaN)
-        df[f"{target}_weekly_mean_3w"] = (
-            0.5 * df[f"{target}_lag_168h"]
-            + 0.3 * df[f"{target}_lag_336h"]
-            + 0.2 * df[f"{target}_lag_504h"]
-        )
-        df[f"{target}_weekly_std_3w"] = (
-            pd.concat([df[f"{target}_lag_168h"], df[f"{target}_lag_336h"], df[f"{target}_lag_504h"]], axis=1)
-            .std(axis=1)
-            .fillna(0.0)
-        )
+        ratio = (df[target] / (df[f"{target}_weekly_mean_3w"] + 1e-3)).clip(0, 3)
+        smart = df[f"{target}_weekly_mean_3w"].copy()
+        for event_date, mask in [
+            ("2025-11-10", df["bridge_intensity"] > 0),
+            ("2025-11-11", df["is_armistice"] == 1),
+        ]:
+            # Les ratios ne peuvent servir qu'après observation des événements.
+            reference = df.loc[(df["t_1h"].dt.strftime("%Y-%m-%d") == event_date) & (df[f"is_imputed_{target}"] == 0), ["arc", "hour", "t_1h"]].copy()
+            reference["event_ratio"] = ratio.loc[reference.index]
+            reference = reference.dropna(subset=["event_ratio"])
+            event_ratio = historical_lookup(reference, ["arc", "hour"], ["event_ratio"])["event_ratio"]
+            eligible = mask & event_ratio.notna()
+            if event_date.endswith("10"):
+                weight = df.loc[eligible, "bridge_intensity"]
+                smart.loc[eligible] *= 1 - weight * (1 - event_ratio.loc[eligible])
+            else:
+                smart.loc[eligible] *= event_ratio.loc[eligible]
+        other_holidays = (df["is_public_holiday"] == 1) & (df["is_armistice"] == 0)
+        smart.loc[other_holidays] = df.loc[other_holidays, f"{target}_regime_hist_mean"]
+        df[f"{target}_smart_expected"] = smart
 
-        # Profil causal par 'day_regime' calculé uniquement sur les heures réelles
-        real_only_series = df[target].where(df[f"is_imputed_{target}"] == 0)
-        shifted_real = real_only_series.groupby(df["arc"]).shift(24 * 5)
-        df[f"{target}_regime_hist_mean"] = (
-            shifted_real.groupby([df["arc"], df["day_regime"], df["hour"]])
-            .transform(lambda s: s.expanding(min_periods=1).mean())
-        ).fillna(df[f"{target}_weekly_mean_3w"])
-
-        # APPROCHE SNCF A-1 : Ratio du Pont de 1j (10 nov 2025) et de l'Armistice (11 nov 2025)
-        df[f"{target}_ratio_to_base"] = (df[target] / (df[f"{target}_weekly_mean_3w"] + 1e-3)).clip(0.0, 3.0)
-
-        armistice_2025 = (
-            df[df["date_str"] == "2025-11-11"]
-            .groupby(["arc", "hour"])[f"{target}_ratio_to_base"]
-            .mean()
-            .rename("ratio_armistice_a1")
-        )
-        bridge_1d_2025 = (
-            df[df["date_str"] == "2025-11-10"]
-            .groupby(["arc", "hour"])[f"{target}_ratio_to_base"]
-            .mean()
-            .rename("ratio_bridge_1d_a1")
-        )
-
-        df = df.merge(armistice_2025, on=["arc", "hour"], how="left")
-        df = df.merge(bridge_1d_2025, on=["arc", "hour"], how="left")
-
-        smart_val = df[f"{target}_weekly_mean_3w"].copy()
-
-        mask_any_bridge = df["bridge_intensity"] > 0
-        w = df.loc[mask_any_bridge, "bridge_intensity"]
-        r_1d = df.loc[mask_any_bridge, "ratio_bridge_1d_a1"].fillna(0.85)
-        effective_ratio = 1.0 - w * (1.0 - r_1d)
-        smart_val.loc[mask_any_bridge] = df.loc[mask_any_bridge, f"{target}_weekly_mean_3w"] * effective_ratio
-
-        mask_holidays_other = (df["is_public_holiday"] == 1) & (df["is_armistice"] == 0)
-        smart_val.loc[mask_holidays_other] = df.loc[mask_holidays_other, f"{target}_regime_hist_mean"]
-
-        mask_armistice = df["is_armistice"] == 1
-        smart_val.loc[mask_armistice] = (
-            df.loc[mask_armistice, f"{target}_weekly_mean_3w"]
-            * df.loc[mask_armistice, "ratio_armistice_a1"].fillna(0.5)
-        )
-
-        df[f"{target}_smart_expected"] = smart_val.fillna(df[f"{target}_lag_168h"])
-        df.drop(columns=[f"{target}_ratio_to_base", "ratio_armistice_a1", "ratio_bridge_1d_a1"], inplace=True)
-
-    df.drop(columns=["date_str"], inplace=True)
-    arc_mapping = {"Champs-Elysées": 0, "Convention": 1, "Saint-Pères": 2}
-    df["arc_id"] = df["arc"].map(arc_mapping)
-
-    return df
+    df["arc_id"] = df["arc"].map({"Champs-Elysées": 0, "Convention": 1, "Saint-Pères": 2})
+    return df.drop(columns="available_at")
 
 
 def run_feature_pipeline() -> None:
@@ -276,7 +256,6 @@ def run_feature_pipeline() -> None:
 
     df_full = extend_grid_to_test_period(df_clean, df_weather)
     df_feat = add_calendar_and_event_features(df_full)
-    df_feat = add_weather_interaction_features(df_feat)
     df_feat = add_causal_lags_and_sncf_patterns(df_feat)
 
     print("5/5 - Séparation et sauvegarde de features_train.csv et features_test_nov7_11.csv...")
@@ -286,7 +265,16 @@ def run_feature_pipeline() -> None:
     # On retire les 7 premiers jours (initialisation du lag 168h)
     min_train_date = df_feat["t_1h"].min() + pd.Timedelta(days=7)
     mask_train = (df_feat["t_1h"] >= min_train_date) & (df_feat["t_1h"] < TEST_START) & df_feat["q"].notna() & df_feat["k"].notna()
+    mask_train &= (df_feat["is_imputed_q"] == 0) & (df_feat["is_imputed_k"] == 0)
     df_train = df_feat.loc[mask_train].copy()
+
+    # Ces champs décrivent la cible ou des observations météo futures, et ne
+    # sont pas des variables connues lors de l’émission de la prévision.
+    unavailable = ["is_road_closed", "is_imputed_q", "is_imputed_k",
+                   "temperature_2m", "precipitation", "rain", "wind_speed_10m"]
+    df_train = df_train.drop(columns=unavailable, errors="ignore")
+    df_test = df_test.drop(columns=unavailable, errors="ignore")
+    df_test = df_test.drop(columns=["q", "k"])
 
     train_out = os.path.join(PROCESSED_DATA_DIR, "features_train.csv")
     test_out = os.path.join(PROCESSED_DATA_DIR, "features_test_nov7_11.csv")
@@ -294,7 +282,7 @@ def run_feature_pipeline() -> None:
     df_train.to_csv(train_out, index=False)
     df_test.to_csv(test_out, index=False)
 
-    print(f"   -> Train set sauvegardé : {len(df_train)} lignes (0 NaN résiduel !)")
+    print(f"   -> Train set sauvegardé : {len(df_train)} lignes (cibles observées uniquement)")
     print(f"   -> Test set (7-11 nov) sauvegardé : {len(df_test)} lignes")
 
 

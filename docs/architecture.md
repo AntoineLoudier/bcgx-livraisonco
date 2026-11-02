@@ -1,39 +1,55 @@
-# 📚 Documentation Technique — Pipeline Data & Feature Engineering
+# Pipeline de prévision du trafic
 
-Ce document détaille les choix techniques et l'implémentation du pipeline réalisé pour le cas **LivraisonCo** (BCG X).
+Le projet prépare des prévisions horaires pour trois arcs parisiens, du 7 au 11 novembre 2026. Les cibles sont le débit `q` et le taux d'occupation `k`.
 
-## 1. Module d'Acquisition (`src/data_loader.py`)
-- **Trafic (`download_paris_traffic`) :** Utilise l'endpoint d'export direct CSV de l'API Open Data Paris v2.1 (`comptages-routiers-permanents`, historique glissant de 13 mois) avec un filtre ODSQL strict sur les 3 couples de nœuds amont/aval du brief officiel :
-  - `Champs-Elysées` : `Av_Champs_Elysees-Washington` $\rightarrow$ `Av_Champs_Elysees-Berri`
-  - `Convention` : `Lecourbe-Convention` $\rightarrow$ `Convention-Blomet`
-  - `Saint-Pères` : `Sts_Peres-Voltaire` $\rightarrow$ `Sts_Peres-Universite`
-- **Météo (`download_paris_weather`) :** Combine l'API Archive (`/v1/archive`) jusqu'à $J-5$ et l'API Forecast (`/v1/forecast`) de $J-7$ à $J+16$ afin de couvrir sans trou la période d'entraînement ainsi que la fenêtre de test du **7 au 11 novembre 2026**. Extrait `temperature_2m`, `precipitation`, `rain`, et `wind_speed_10m` au pas horaire.
+## Acquisition et préparation
 
-## 2. Module de Prétraitement (`src/preprocessing.py`)
-Le pipeline exécute 5 étapes pour préparer les données de ML :
-1. **Standardisation temporelle :** Conversion des horodatages UTC vers le fuseau `Europe/Paris` et traitement des doublons liés au passage à l'heure d'hiver (moyenne des deux heures `02:00`).
-2. **Nettoyage physique (Diagramme Fondamental) :** Suppression des valeurs aberrantes ($q \notin [0, 8000]$, $k \notin [0, 100]$) et conversion en `NaN`.
-3. **Détection des faux zéros :** En journée (`07h00–22h00`), si une voie ouverte (`is_road_closed == 0`) affiche simultanément $q=0$ et $k=0$, il s'agit d'une panne de capteur $\rightarrow$ conversion en `NaN`. Les fermetures réelles (`etat_barre` actif, comme le matin du 11 novembre aux Champs-Élysées) sont préservées.
-4. **Grille horaire continue :** Reconstruction d'un pas strict de `1h` sans trou temporel pour les 3 arcs cibles.
-5. **Imputation hybride sans fuite du futur (Zero Data Leakage) :**
-   - Micro-coupures ($\le 3\text{ heures}$) : Interpolation linéaire temporelle.
-   - Pannes longues ($> 3\text{ heures}$) : Moyenne causale des 3 semaines passées à la même heure (`shift(168)`, `shift(336)`, `shift(504)`).
-   - Colonnes indicateurs `is_imputed_q` / `is_imputed_k` ajoutées pour tracer les valeurs reconstruites.
-   - **Sortie générée :** `data/processed/traffic_clean.csv`.
+`src/data_loader.py` télécharge les mesures de trafic et la météo. `src/preprocessing.py` aligne les dates sur l'heure locale, filtre les valeurs aberrantes et construit une grille horaire. Les valeurs manquantes sont remplies avec des observations précédentes : retards hebdomadaires puis médiane historique par arc, jour et heure. Une valeur peut rester manquante si aucun historique n'est disponible. Les indicateurs d'imputation permettent de ne pas utiliser ces valeurs comme cibles d'entraînement.
 
-## 3. Module de Feature Engineering (`src/features.py`)
-1. **Extension à la grille de test (`extend_grid_to_test_period`) :** Prolonge la grille horaire des 3 arcs jusqu'au `2026-11-11 23:00`, joint les prévisions météo horaires, et projette l'état `is_road_closed = 1` sur `Champs-Elysées` le `2026-11-11` de `08h00` à `14h00` (conformément à l'historique observé le `2025-11-11`).
-2. **Calendrier & Modélisation fine des Ponts (`1 jour` vs `2 jours`) :**
-   - Encodage cyclique ($\sin/\cos$) de l'heure et du jour de la semaine, indicateurs `is_weekend`, `is_public_holiday` et `is_school_holiday` (calendrier Zone C Paris 2025–2026).
-   - **Intensité du pont (`bridge_intensity`) :** Distingue un pont de 1 jour (`1.0`, ex. lundi 10 nov 2025 veille d'un mardi férié, ou vendredi 15 mai 2026 lendemain de l'Ascension) d'un pont de 2 jours / viaduc lorsque le férié tombe un mercredi (comme le mercredi 11 nov 2026 : `0.50` pour le mardi 10 nov et `0.25` pour le lundi 9 nov).
-3. **Interactions Météo $\times$ Pointe :** Variables `is_rush_hour`, `is_raining`, `rain_in_rush_hour` (effet multiplicateur de la pluie sur la congestion $k$ en heure de pointe) et `temp_diff_24h`.
-4. **Lags causaux à horizon 5 jours & Pattern SNCF $A-1$ recalibré (`add_causal_lags_and_sncf_patterns`) :**
-   - Lags hebdomadaires garantis disponibles lors du gel du code le 6 novembre : `lag_168h` ($J-7$), `lag_336h` ($J-14$), `lag_504h` ($J-21$), moyenne pondérée sur 3 semaines (`weekly_mean_3w`) et écart-type (`weekly_std_3w`).
-   - Moyenne historique causale par régime de jour (`regime_hist_mean`, décalée de 120h).
-   - **Indicateur synthétique `q_smart_expected` / `k_smart_expected` :**
-     - *Jour normal :* Suit la tendance récente des 3 dernières semaines (`weekly_mean_3w`).
-     - *Jour de pont (9–10 nov 2026) :* Applique le coefficient d'abattement du pont de 2025 (`ratio_bridge_1d_a1`) modulé par `bridge_intensity` ($1 - w \cdot (1 - \text{ratio}_{A-1})$) afin de ne pas surestimer la baisse sur un pont de 2 jours.
-     - *Armistice (11 nov 2026) :* Applique au niveau de base 2026 le ratio heure par heure observé le `2025-11-11` (`ratio_armistice_a1`), capturant à la fois le flux résiduel des cortèges officiels aux Champs-Élysées (`08h00–13h00`, $q \in [12, 81]$) et le pic de réouverture de `14h00` ($q \approx 600, k \approx 16\%$).
-5. **Sorties générées :**
-   - `data/processed/features_train.csv` : Jeu d'entraînement complet sans `NaN`.
-   - `data/processed/features_test_nov7_11.csv` : Les 360 lignes cibles (`2026-11-07 00:00` au `2026-11-11 23:00`).
+L'imputation doit être recalculée depuis les données brutes après une modification du code ; les anciens CSV préparés peuvent contenir des informations futures.
+
+## Variables et disponibilité
+
+`src/features.py` simule, pour chaque date historique, une prévision émise cinq jours plus tôt. Pour la fenêtre du 7 au 11 novembre, la date de disponibilité est plafonnée au 6 novembre à 23 h. Les mesures plus récentes ne sont pas utilisées. Les profils des Champs-Élysées sont construits avec les dernières observations réelles disponibles à cette date, et les profils des 10 et 11 novembre 2025 ne sont utilisés qu'une fois leurs mesures disponibles.
+
+Les dates de prévision historiques utilisent un horizon fixe de 120 heures. Pour évaluer une émission unique à un autre horizon ou sur une autre fenêtre, il faut adapter le calcul de la date de disponibilité et reconstruire les variables à chaque fenêtre. Les heures sont représentées en temps local sans fuseau : le passage à l'heure d'hiver est agrégé et cette convention doit être conservée lors de la validation.
+
+Les exports ne contiennent ni météo, ni état de fermeture observé à l'heure cible, ni indicateurs d'imputation de la cible : les archives météo ne sont pas des prévisions historiques et l'état réel futur n'est pas connu. Les variables calendaires et les indicateurs d'événement prévus restent disponibles. Pour réintroduire la météo ou les fermetures, il faut des prévisions ou informations publiées avant chaque date d'émission. Les dates et effets des événements restent des hypothèses à valider.
+
+Le fichier d'entraînement ne conserve que les lignes où les deux cibles sont observées. Les colonnes `q` et `k` sont les étiquettes : **les exclure toutes les deux des entrées du modèle**, même lors de l'entraînement d'un seul indicateur. Le fichier de prévision ne contient pas ces colonnes. Les retards peuvent être manquants lorsque l'historique disponible est insuffisant ; il faut utiliser un modèle ou une stratégie d'imputation ajustée exclusivement sur l'entraînement.
+
+## Exécution
+
+Depuis la racine du dépôt :
+
+```bash
+python src/data_loader.py
+python src/preprocessing.py
+python src/features.py
+python src/evaluate.py
+python -m unittest discover -s tests -v
+```
+
+## Validation chronologique
+
+`src/evaluate.py` évalue par défaut les quatre dernières fenêtres complètes de cinq jours, espacées de sept jours. Chaque fenêtre simule une émission unique à 23 h la veille du premier jour. L'historique est tronqué à cette date, les variables sont recalculées, puis les cibles observées sont jointes uniquement pour le calcul des scores. La MAE et la RMSE sont calculées séparément par arc, cible et fenêtre, avec le nombre d'observations et de prévisions manquantes. Une cellule sans observations n'a pas de score.
+
+Trois références sont évaluées : semaine précédente, moyenne pondérée des trois dernières semaines et profil calendaire. Pour les Champs-Élysées après le 15 décembre 2025, ces retards représentent les dernières observations réelles disponibles, éventuellement anciennes. Ce ne sont pas des modèles entraînés. Les valeurs d'entrée manquantes restent manquantes et les comparaisons entre méthodes doivent tenir compte de leur couverture respective.
+
+Les résultats sont enregistrés dans `data/processed/validation/` : `metrics.csv`, `predictions.csv` et `weather_availability.csv`. Les options `--windows`, `--step-days`, `--traffic`, `--weather` et `--output` permettent de modifier l'exécution. La validation s'appuie sur `traffic_clean.csv`, qui doit avoir été reconstruit avec l'imputation causale actuelle ; les anciens fichiers préparés ne conviennent pas.
+
+Le fichier météo actuel ne contient pas de date d'émission : on ne peut donc pas vérifier rétrospectivement qu'il s'agissait de prévisions disponibles au moment de chaque émission. La météo n'est utilisée par aucune des références. Pour auditer un fichier de prévisions archivées, fournir `--weather` avec les colonnes `issued_at` et `valid_at`, horodatées avec fuseau ; le rapport compte les heures locales pour lesquelles au moins un enregistrement a été émis au plus tard à la date de prévision. Ce compte vérifie les horodatages des enregistrements, pas la présence ou la qualité de chaque variable météo. La grille de trafic agrège l'heure répétée lors du changement d'heure.
+
+## Premier modèle
+
+`python main_train.py` entraîne deux modèles LightGBM globaux, un pour `q` et un pour `k`, avec une perte absolue. Chaque fenêtre est évaluée avec des modèles réentraînés sur les seules mesures observées jusqu'à sa date d'émission ; leurs variables utilisent des retards et des données calendaires. Les prévisions météo ne sont pas utilisées. Les prédictions sont bornées à zéro pour `q` et entre 0 et 100 pour `k`.
+
+Les résultats sont dans `data/processed/model_analysis/` : scores par fenêtre (`metrics.csv`), comparaisons sur les mêmes observations pour chaque paire modèle-référence (`comparison.csv`), erreurs et biais par heure (`errors_by_hour.csv`), importance des variables par gain d'entraînement (`feature_importance.csv`), prédictions et nombres de lignes d'entraînement. Une importance par gain décrit l'usage des variables par les arbres et ne démontre pas leur causalité ni leur importance hors échantillon. Comparer les scores des fenêtres et leurs couvertures avant de conclure.
+
+Après la validation, deux modèles sont entraînés à nouveau jusqu'à la dernière date disponible, plafonnée au gel du 6 novembre 2026. Ils sont enregistrés dans `models/lightgbm_q.txt` et `models/lightgbm_k.txt` ; `lightgbm_metadata.json` contient la date de coupure et les variables. Relancer l'entraînement après actualisation des données. Les modèles enregistrés ne constituent pas encore une chaîne d'inférence opérationnelle.
+
+`python main_stability.py` étend l'analyse à 52 fenêtres hebdomadaires et à des fenêtres autour des jours fériés. Les résultats, les effectifs et les limites de cette étude sont décrits dans [l'étude de stabilité](etude_stabilite.md).
+
+`python main_compare_streets.py` réentraîne et compare des modèles globaux et par rue sur ces fenêtres, puis enregistre les six modèles locaux dans `models/per_street/`. Les résultats figurent dans [la comparaison des modèles par rue](modeles_par_rue.md).
+
+Les données téléchargées et les CSV générés ne sont pas versionnés. Les quatre fenêtres récentes ne contiennent pas de valeurs observées aux Champs-Élysées ; leurs résultats ne permettent donc pas d'évaluer ce tronçon, ni de valider spécifiquement le comportement des jours fériés ou des ponts de novembre.

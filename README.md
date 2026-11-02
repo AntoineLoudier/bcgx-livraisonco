@@ -26,6 +26,18 @@ python src/data_loader.py
 # 4. Lancer le nettoyage et le preprocessing
 python src/preprocessing.py
 
+# 5. Construire les variables
+python src/features.py
+
+# 6. Évaluer les références sur quatre fenêtres historiques
+python src/evaluate.py
+
+# 7. Vérifier les fuites temporelles couvertes par les tests
+python -m unittest discover -s tests -v
+
+# 8. Entraîner et évaluer les premiers modèles
+python main_train.py
+
 ```
 
 ## 📂 Architecture du Projet
@@ -38,13 +50,18 @@ bcgx-livraisonco/
 ├── src/
 │   ├── __init__.py
 │   ├── data_loader.py        # Extraction Open Data Paris (ODSQL) & API Open-Meteo
-│   ├── preprocessing.py      # Nettoyage physique, grille horaire 1h, imputation sans leakage
-│   ├── features.py           # [À FAIRE] Encodage cyclique, calendrier, lags
-│   ├── model.py              # [À FAIRE] Entraînement LightGBM/XGBoost
-│   └── evaluate.py           # [À FAIRE] Validation croisée temporelle (TimeSeriesSplit)
+│   ├── preprocessing.py      # Nettoyage physique et imputation causale
+│   ├── features.py           # Variables calendaires et retards disponibles
+│   ├── model.py              # Entraînement LightGBM sur cibles observées
+│   └── evaluate.py           # Validation temporelle et disponibilité météo
 ├── notebooks/                # Notebooks d'exploration (EDA)
 ├── models/                   # Modèles sauvegardés
-├── main_train.py             # Script d'entraînement global
+├── main_train.py             # Entraînement et validation temporelle
 ├── main_predict.py           # Script d'inférence pour la période du 7 au 11 novembre
 ├── requirements.txt          # Dépendances Python
 └── README.md                 # Documentation du projet
+
+Les fichiers préparés doivent être régénérés après modification du pipeline. Les
+colonnes `q` et `k` du fichier d'entraînement sont des cibles, à exclure toutes
+les deux des entrées du modèle. Voir les conditions de disponibilité et de
+validation dans [la documentation technique](docs/architecture.md).

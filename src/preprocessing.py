@@ -63,15 +63,13 @@ def build_complete_hourly_grid(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def impute_missing_values_no_leakage(df: pd.DataFrame) -> pd.DataFrame:
-    """Impute les NaN sans fuite du futur (interpolation <=3h, puis moyenne J-7/J-14/J-21)."""
-    print("4/5 - Imputation hybride des valeurs manquantes (zéro Data Leakage)...")
+    """Remplit les trous à partir des seules observations antérieures du même arc."""
+    print("4/5 - Imputation causale des valeurs manquantes...")
     df = df.copy()
     df["is_imputed_q"] = df["q"].isna().astype(int)
     df["is_imputed_k"] = df["k"].isna().astype(int)
 
     for col in ["q", "k"]:
-        df[col] = df.groupby("arc")[col].transform(lambda s: s.interpolate(method="linear", limit=3))
-
         lag_1w = df.groupby("arc")[col].shift(24 * 7)
         lag_2w = df.groupby("arc")[col].shift(24 * 14)
         lag_3w = df.groupby("arc")[col].shift(24 * 21)
@@ -80,7 +78,9 @@ def impute_missing_values_no_leakage(df: pd.DataFrame) -> pd.DataFrame:
 
         dow = df["t_1h"].dt.dayofweek
         hour = df["t_1h"].dt.hour
-        fallback_median = df.groupby(["arc", dow, hour])[col].transform("median")
+        fallback_median = df.groupby(["arc", dow, hour])[col].transform(
+            lambda s: s.shift().expanding().median()
+        )
         df[col] = df[col].fillna(fallback_median)
 
     return df
