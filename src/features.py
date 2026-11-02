@@ -186,7 +186,6 @@ def add_causal_lags_and_sncf_patterns(df: pd.DataFrame) -> pd.DataFrame:
         lag_7d = grp.shift(24 * 7)
         lag_14d = grp.shift(24 * 14)
         lag_21d = grp.shift(24 * 21)
-        lag_28d = grp.shift(24 * 28)
 
         # Cascade strictement causale (aucun bfill !) : gère à la fois le début du dataset et les 71h du test avant le 5 nov
         df[f"{target}_lag_672h"] = lag_28d.fillna(lag_21d).fillna(lag_14d).fillna(lag_7d)
