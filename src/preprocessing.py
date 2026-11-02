@@ -63,25 +63,40 @@ def build_complete_hourly_grid(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def impute_missing_values_no_leakage(df: pd.DataFrame) -> pd.DataFrame:
-    """Impute les NaN sans fuite du futur (interpolation <=3h, puis moyenne J-7/J-14/J-21)."""
-    print("4/5 - Imputation hybride des valeurs manquantes (zéro Data Leakage)...")
+    """
+    Impute les NaN de manière 100% causale (strictement aucun regard vers t+1) :
+    1. Micro-coupures (<= 3h) : Forward-Fill (propage la dernière mesure connue à t-1).
+    2. Pannes longues (> 3h) : Moyenne causale des 3 semaines passées (J-7, J-14, J-21).
+    3. Secours : Moyenne cumulative passée (expanding mean) par (arc, dayofweek, hour).
+    """
+    print("4/5 - Imputation 100% causale des valeurs manquantes (zéro Data Leakage)...")
     df = df.copy()
     df["is_imputed_q"] = df["q"].isna().astype(int)
     df["is_imputed_k"] = df["k"].isna().astype(int)
 
-    for col in ["q", "k"]:
-        df[col] = df.groupby("arc")[col].transform(lambda s: s.interpolate(method="linear", limit=3))
+    dow = df["t_1h"].dt.dayofweek
+    hour = df["t_1h"].dt.hour
 
+    for col in ["q", "k"]:
+        # 1. Forward-fill uniquement sur 3 heures max (n'utilise jamais t+1 !)
+        df[col] = df.groupby("arc")[col].transform(lambda s: s.ffill(limit=3))
+
+        # 2. Moyenne des 3 semaines précédentes (strictement dans le passé)
         lag_1w = df.groupby("arc")[col].shift(24 * 7)
         lag_2w = df.groupby("arc")[col].shift(24 * 14)
         lag_3w = df.groupby("arc")[col].shift(24 * 21)
         historical_mean = pd.concat([lag_1w, lag_2w, lag_3w], axis=1).mean(axis=1)
         df[col] = df[col].fillna(historical_mean)
 
-        dow = df["t_1h"].dt.dayofweek
-        hour = df["t_1h"].dt.hour
-        fallback_median = df.groupby(["arc", dow, hour])[col].transform("median")
-        df[col] = df[col].fillna(fallback_median)
+        # 3. Secours causal : moyenne cumulative passée (expanding) par (arc, jour, heure)
+        causal_fallback = (
+            df.groupby(["arc", dow, hour])[col]
+            .transform(lambda s: s.expanding(min_periods=1).mean())
+        )
+        df[col] = df[col].fillna(causal_fallback)
+
+        # 4. Si les toutes premières heures d'un arc au début de l'historique sont NaN, ffill/0
+        df[col] = df.groupby("arc")[col].transform(lambda s: s.ffill().fillna(0.0))
 
     return df
 

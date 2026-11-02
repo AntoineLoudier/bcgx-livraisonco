@@ -68,15 +68,16 @@ def get_temporal_cv_splits(df_train: pd.DataFrame, n_splits: int = 5, val_days: 
         min_train_time = real_times.iloc[int(len(real_times) * 0.35)]
         max_real_time = real_times.max()
 
-        # Recherche de toutes les fenêtres disjointes de 5 jours ayant >= 85% de mesures réelles
+        # Comme df_train est déjà filtré sur is_imputed_q == 0, une fenêtre de 5 jours (120h)
+        # ayant >= 85% de mesures réelles correspond à len(win_sub) >= int(val_hours * 0.85) (soit >= 102h)
+        min_real_hours = int(val_hours * 0.85)
         valid_windows = []
         curr_end = max_real_time
         while curr_end - pd.Timedelta(hours=val_hours - 1) >= min_train_time:
             curr_start = curr_end - pd.Timedelta(hours=val_hours - 1)
             win_sub = sub[(sub["t_1h"] >= curr_start) & (sub["t_1h"] <= curr_end)]
-            real_ratio = (win_sub["is_imputed_q"] == 0).mean()
 
-            if len(win_sub) == val_hours and real_ratio >= 0.85:
+            if len(win_sub) >= min_real_hours:
                 valid_windows.append((curr_start, curr_end))
                 curr_end = curr_start - pd.Timedelta(hours=1)
             else:

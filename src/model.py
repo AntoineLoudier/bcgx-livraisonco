@@ -12,21 +12,22 @@ FEATURE_COLS = [
     "hour", "dayofweek", "month",
     "hour_sin", "hour_cos", "dow_sin", "dow_cos",
     "is_weekend", "is_public_holiday", "bridge_intensity", "is_bridge_day",
-    "is_school_holiday", "day_regime",
+    "is_school_holiday","is_summer_holiday", "day_regime",
     # Fermetures & Événements
     "is_road_closed", "is_paris_respire", "is_armistice", "is_armistice_parade_hours",
     # Météo & Interactions
     "temperature_2m", "precipitation", "rain", "wind_speed_10m",
     "is_rush_hour", "is_raining", "rain_in_rush_hour", "temp_diff_24h",
     # Lags Débit (q)
-    "q_lag_168h", "q_lag_336h", "q_lag_504h",
+    "q_lag_168h", "q_lag_336h", "q_lag_504h","q_lag_672h",
     "q_weekly_mean_3w", "q_weekly_std_3w", "q_regime_hist_mean", "q_smart_expected",
     # Lags Taux d'occupation (k)
-    "k_lag_168h", "k_lag_336h", "k_lag_504h",
+    "k_lag_168h", "k_lag_336h", "k_lag_504h","k_lag_672h",
     "k_weekly_mean_3w", "k_weekly_std_3w", "k_regime_hist_mean", "k_smart_expected",
     # Variables physiques croisées et pentes horaires (ajoutées à la volée)
     "congestion_index_168h", "q_hour_slope_168h", "k_hour_slope_168h",
     "holiday_x_rush",
+    "q_hour_p90","k_hour_p90"
 ]
 
 
@@ -45,12 +46,19 @@ def add_cross_physical_features(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def compute_sample_weights(df_arc: pd.DataFrame) -> np.ndarray:
-    """Donne progressivement plus d'importance aux observations récentes (de 0.8 à 1.25)."""
+def compute_sample_weights(df_arc: pd.DataFrame, target: str = "q") -> np.ndarray:
+    """
+    1. Donne plus de poids aux observations récentes (0.85 -> 1.20)
+    2. Sur le débit (q), sur-pondère les heures de journée 08h-20h (x1.25)
+    """
     n = len(df_arc)
     if n <= 1:
         return np.ones(n)
-    return np.linspace(0.8, 1.25, n)
+    recency = np.linspace(0.85, 1.20, n)
+    if target == "q":
+        daytime_boost = np.where(df_arc["hour"].between(8, 20), 1.25, 0.90)
+        return recency * daytime_boost
+    return recency
 
 
 class ResidualEnsembleModel:
@@ -67,18 +75,26 @@ class ResidualEnsembleModel:
         self.q_min = 0.0
         self.q_max = 8000.0 if target == "q" else 100.0
 
+        # Champs-Élysées n'a que ~1143 heures réelles : on bride la profondeur pour éviter tout overfit !
+        is_small_sample = (arc == "Champs-Elysées")
+        n_est = 120 if is_small_sample else 400
+        depth_lgb = 3 if is_small_sample else 5
+        leaves_lgb = 9 if is_small_sample else 23
+        depth_xgb = 3 if is_small_sample else 4
+        min_child = 35 if is_small_sample else 20
+
         self.lgbm = LGBMRegressor(
             objective="regression",
             metric="rmse",
-            n_estimators=400,
+            n_estimators=n_est,
             learning_rate=0.025,
-            num_leaves=23,
-            max_depth=5,
-            min_child_samples=20,
+            num_leaves=leaves_lgb,
+            max_depth=depth_lgb,
+            min_child_samples=min_child,
             subsample=0.8,
             colsample_bytree=0.8,
-            reg_alpha=1.5,
-            reg_lambda=3.0,
+            reg_alpha=2.0,
+            reg_lambda=4.0,
             random_state=42,
             verbose=-1,
         )
@@ -86,14 +102,14 @@ class ResidualEnsembleModel:
         self.xgb = XGBRegressor(
             objective="reg:squarederror",
             eval_metric="rmse",
-            n_estimators=400,
+            n_estimators=n_est,
             learning_rate=0.025,
-            max_depth=4,
-            min_child_weight=20,
+            max_depth=depth_xgb,
+            min_child_weight=min_child,
             subsample=0.8,
             colsample_bytree=0.8,
-            reg_alpha=1.5,
-            reg_lambda=3.0,
+            reg_alpha=2.0,
+            reg_lambda=4.0,
             random_state=42,
             n_jobs=-1,
         )
@@ -111,7 +127,7 @@ class ResidualEnsembleModel:
         base = df_prep[self.base_col].to_numpy()
 
         residual = y - base
-        weights = compute_sample_weights(df_prep)
+        weights = compute_sample_weights(df_prep, self.target)
 
         self.q_max = float(np.nanpercentile(y, 99.9) * 1.10)
         if self.target == "k":
