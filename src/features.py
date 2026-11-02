@@ -177,8 +177,9 @@ def add_causal_lags_and_sncf_patterns(df: pd.DataFrame) -> pd.DataFrame:
         | (df["is_road_closed"] == 1)
         | (df["is_paris_respire"] == 1)
     )
-    lag7_was_special = is_special_hour.groupby(df["arc"]).shift(24 * 7).fillna(False)
-    lag14_was_special = is_special_hour.groupby(df["arc"]).shift(24 * 14).fillna(False)
+    # fill_value=False directement dans shift() supprime le FutureWarning de Pandas !
+    lag7_was_special = is_special_hour.groupby(df["arc"]).shift(24 * 7, fill_value=False)
+    lag14_was_special = is_special_hour.groupby(df["arc"]).shift(24 * 14, fill_value=False)
 
     for target in ["q", "k"]:
         # On utilise la série continue issue de preprocessing.py (qui est déjà 100% causale)
@@ -186,8 +187,9 @@ def add_causal_lags_and_sncf_patterns(df: pd.DataFrame) -> pd.DataFrame:
         lag_7d = grp.shift(24 * 7)
         lag_14d = grp.shift(24 * 14)
         lag_21d = grp.shift(24 * 21)
+        lag_28d = grp.shift(24 * 28)  # <-- La ligne qui manquait !
 
-        # Cascade strictement causale (aucun bfill !) : gère à la fois le début du dataset et les 71h du test avant le 5 nov
+        # Cascade strictement causale (aucun bfill !)
         df[f"{target}_lag_672h"] = lag_28d.fillna(lag_21d).fillna(lag_14d).fillna(lag_7d)
         df[f"{target}_lag_504h"] = lag_21d.fillna(lag_14d).fillna(lag_7d).fillna(df[f"{target}_lag_672h"])
         df[f"{target}_lag_336h"] = lag_14d.fillna(df[f"{target}_lag_504h"])
@@ -253,7 +255,7 @@ def add_causal_lags_and_sncf_patterns(df: pd.DataFrame) -> pd.DataFrame:
         ).fillna(df[f"{target}_weekly_mean_3w"] * 1.25)
 
         # Ratios A-1 du 10 nov 2025 et du 11 nov 2025 (appliqués uniquement après le 12 nov 2025 -> 0 fuite !)
-        df[f"{target}_ratio_to_base"] = (df[target] / (df[f"{target}_weekly_mean_3w"] + 1e-3)).clip(0.0, 3.0)
+        df[f"{target}_ratio_to_base"] = (df[target] / (df[f"{target}_weekly_mean_3w"] + 1e-3)).clip(0.0, 1.25)
 
         armistice_2025 = (
             df[df["date_str"] == "2025-11-11"]
