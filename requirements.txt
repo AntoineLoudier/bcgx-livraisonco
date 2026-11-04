@@ -1,8 +1,9 @@
 pandas
 numpy
-scikit-learn
+scikit-learn>=1.2
 lightgbm
-xgboost
+xgboost>=1.7
+catboost>=1.2.8
 requests
 matplotlib
 seaborn
@@ -10,3 +11,4 @@ shap
 jupyter
 workalendar
 pyarrow
+torch>=2.5

@@ -1,0 +1,148 @@
+{
+  "selection_start_utc": "2025-10-01T00:00:00Z",
+  "selection_end_utc_exclusive": "2026-05-01T00:00:00Z",
+  "download_end_utc_exclusive": "2026-11-03T00:00:00Z",
+  "selection": [
+    {
+      "iu_ac": "1029",
+      "libelle": "Bd_Gal_Martial_Valin",
+      "libelle_nd_amont": "Bd_Gal_Valin-Pt_du_Garigliano",
+      "libelle_nd_aval": "Bd_Gal_Valin-Sq_Sarrabezolles",
+      "n": 4935
+    },
+    {
+      "iu_ac": "1031",
+      "libelle": "Bd_Gal_Martial_Valin",
+      "libelle_nd_amont": "Bd_Gal_Valin-Sq_Sarrabezolles",
+      "libelle_nd_aval": "Bd_Gal_Valin-Bossoutrot",
+      "n": 4935
+    },
+    {
+      "iu_ac": "4520",
+      "libelle": "Av_Henri_Martin",
+      "libelle_nd_amont": "Place_Tattegrain",
+      "libelle_nd_aval": "Place_de_Colombie",
+      "n": 4935
+    },
+    {
+      "iu_ac": "1067",
+      "libelle": "Quai_d'Issy",
+      "libelle_nd_amont": "Quai_Andre_Citroen-am_Victor",
+      "libelle_nd_aval": "Quai_Issy_Y-Echangeur_Garigliano",
+      "n": 4934
+    },
+    {
+      "iu_ac": "1072",
+      "libelle": "Quai_d'Issy",
+      "libelle_nd_amont": "Quai_Andre_Citroen-am_Victor",
+      "libelle_nd_aval": "Bd_Gal_Valin-Pt_du_Garigliano",
+      "n": 4934
+    },
+    {
+      "iu_ac": "4506",
+      "libelle": "Av_Victor_Hugo",
+      "libelle_nd_amont": "Av_Victor_Hugo-Longchamp",
+      "libelle_nd_aval": "Hugo-Dufrenoy",
+      "n": 4934
+    },
+    {
+      "iu_ac": "4509",
+      "libelle": "Av_Victor_Hugo",
+      "libelle_nd_amont": "Hugo-Dufrenoy",
+      "libelle_nd_aval": "Place_Tattegrain",
+      "n": 4934
+    },
+    {
+      "iu_ac": "4625",
+      "libelle": "Bd_Exelmans",
+      "libelle_nd_amont": "Bd_Exelmans-Pt_Garigliano",
+      "libelle_nd_aval": "Bd_Exelmans-Av_Versailles",
+      "n": 4934
+    },
+    {
+      "iu_ac": "4628",
+      "libelle": "Bd_Exelmans",
+      "libelle_nd_amont": "Bd_Exelmans-Av_Versailles",
+      "libelle_nd_aval": "Bd_Exelmans-Chardon_Lagache",
+      "n": 4934
+    },
+    {
+      "iu_ac": "4636",
+      "libelle": "Bd_Exelmans",
+      "libelle_nd_amont": "Bd_Exelmans-Chardon_Lagache",
+      "libelle_nd_aval": "Exelmans-Michel_Ange",
+      "n": 4934
+    },
+    {
+      "iu_ac": "4648",
+      "libelle": "Av_de_Versailles",
+      "libelle_nd_amont": "Av_Versailles-Boileau",
+      "libelle_nd_aval": "Versailles-Reynaud",
+      "n": 4934
+    },
+    {
+      "iu_ac": "985",
+      "libelle": "Quai_d'Issy-Leblanc",
+      "libelle_nd_amont": "Quai_Andre_Citroen-Leblanc",
+      "libelle_nd_aval": "Quai_Andre_Citroen-am_Victor",
+      "n": 4934
+    },
+    {
+      "iu_ac": "5924",
+      "libelle": "Av_Georges_Mandel",
+      "libelle_nd_amont": "G.Mandel-Pasteur_Boegner-Sablons",
+      "libelle_nd_aval": "Georges_Mandel-Trocadero",
+      "n": 4932
+    },
+    {
+      "iu_ac": "4633",
+      "libelle": "Bd_Exelmans",
+      "libelle_nd_amont": "Bd_Exelmans-Chardon_Lagache",
+      "libelle_nd_aval": "Bd_Exelmans-Av_Versailles",
+      "n": 4931
+    },
+    {
+      "iu_ac": "1043",
+      "libelle": "Bd_Lefebvre",
+      "libelle_nd_amont": "Pl_Pte_Versailles",
+      "libelle_nd_aval": "Bd_Lefebvre-Parc_Expo",
+      "n": 4930
+    },
+    {
+      "iu_ac": "4652",
+      "libelle": "Bd_Murat",
+      "libelle_nd_amont": "Murat-Delestraint",
+      "libelle_nd_aval": "Pte_St_Cloud-Murat(nord)",
+      "n": 4930
+    },
+    {
+      "iu_ac": "1030",
+      "libelle": "Bd_Gal_Martial_Valin",
+      "libelle_nd_amont": "Bd_Gal_Valin-Sq_Sarrabezolles",
+      "libelle_nd_aval": "Bd_Gal_Valin-Pt_du_Garigliano",
+      "n": 4929
+    },
+    {
+      "iu_ac": "1032",
+      "libelle": "Bd_Gal_Martial_Valin",
+      "libelle_nd_amont": "Bd_Gal_Valin-Bossoutrot",
+      "libelle_nd_aval": "Bd_Gal_Valin-Sq_Sarrabezolles",
+      "n": 4929
+    },
+    {
+      "iu_ac": "1033",
+      "libelle": "Bd_Gal_Martial_Valin",
+      "libelle_nd_amont": "Bd_Gal_Valin-Bossoutrot",
+      "libelle_nd_aval": "Bd_Victor-Balard",
+      "n": 4929
+    },
+    {
+      "iu_ac": "1034",
+      "libelle": "Bd_Gal_Martial_Valin",
+      "libelle_nd_amont": "Bd_Victor-Balard",
+      "libelle_nd_aval": "Bd_Gal_Valin-Bossoutrot",
+      "n": 4929
+    }
+  ],
+  "raw_sha256": "d5c537c4b7e49adbe45ea28c36f3c1db1b122fae86985a27c4e3b6f8636d5b3d"
+}

@@ -225,3 +225,7 @@ data/processed/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 
+uv.lock
+pyproject.toml
+.venv
+.python-version

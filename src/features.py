@@ -63,7 +63,7 @@ def extend_grid_to_test_period(df_clean: pd.DataFrame, df_weather: pd.DataFrame)
     return df_merged.sort_values(["arc", "t_1h"]).reset_index(drop=True)
 
 
-def add_calendar_and_event_features(df: pd.DataFrame) -> pd.DataFrame:
+def add_calendar_and_event_features(df: pd.DataFrame, manual_bridge: bool = True) -> pd.DataFrame:
     """Crée les variables cycliques, calendaires, l'intensité des ponts (1j vs 2j) et les événements."""
     print("2/5 - Création des variables calendaires et distinction Pont 1j vs Pont 2j (Viaduc)...")
     df = df.copy()
@@ -111,6 +111,9 @@ def add_calendar_and_event_features(df: pd.DataFrame) -> pd.DataFrame:
     df.loc[is_2d_bridge_outer, "bridge_intensity"] = 0.25
     df.loc[is_2d_bridge_adjacent, "bridge_intensity"] = 0.50
     df.loc[is_1d_bridge, "bridge_intensity"] = 1.00
+    if not manual_bridge:
+        # Ablation : ni coefficients de pont ni régime « pont » construit à partir d'eux.
+        df["bridge_intensity"] = 0.0
     df["is_bridge_day"] = (df["bridge_intensity"] >= 0.50).astype(int)
 
     # Vacances scolaires Zone C (Paris)
@@ -118,6 +121,33 @@ def add_calendar_and_event_features(df: pd.DataFrame) -> pd.DataFrame:
     for start_v, end_v in ZONE_C_VACATIONS:
         is_vacation |= (dt >= start_v) & (dt < end_v)
     df["is_school_holiday"] = is_vacation.astype(int)
+
+    # Calendrier connu à l'avance : distances bornées et type du férié le plus
+    # proche. En cas d'égalité, choisir le prochain férié.
+    holidays = pd.DatetimeIndex(sorted(FRENCH_HOLIDAYS))
+    dates = dt.dt.normalize().to_numpy(dtype="datetime64[D]")
+    calendar = holidays.to_numpy(dtype="datetime64[D]")
+    position = np.searchsorted(calendar, dates)
+    before = np.clip(position - 1, 0, len(calendar) - 1)
+    after = np.clip(position, 0, len(calendar) - 1)
+    previous_days = (dates - calendar[before]).astype(int)
+    next_days = (calendar[after] - dates).astype(int)
+    # La recherche place la date même parmi les prochains fériés.
+    previous_days = np.where(next_days == 0, 0, previous_days)
+    previous_days = np.where((position > 0) | (next_days == 0), previous_days, 8)
+    next_days = np.where(position < len(calendar), next_days, 8)
+    df["days_since_holiday"] = np.minimum(previous_days, 8)
+    df["days_until_holiday"] = np.minimum(next_days, 8)
+    choose_next = next_days <= previous_days
+    nearest = np.where(choose_next, after, before)
+    near = np.minimum(previous_days, next_days) <= 7
+    nearest_dates = holidays[nearest]
+    fixed_days = {(1, 1), (5, 1), (5, 8), (7, 14), (8, 15), (11, 1), (11, 11), (12, 25)}
+    fixed = np.array([(date.month, date.day) in fixed_days for date in nearest_dates])
+    df["nearest_holiday_fixed"] = (near & fixed).astype(int)
+    df["nearest_holiday_movable"] = (near & ~fixed).astype(int)
+    df["nearest_holiday_weekday"] = np.where(near, nearest_dates.dayofweek, -1)
+    df["near_holiday_in_school_break"] = ((np.minimum(previous_days, next_days) <= 2) & is_vacation.to_numpy()).astype(int)
 
     # Événements Champs-Élysées
     is_first_sunday = (df["dayofweek"] == 6) & (df["day"] <= 7)
@@ -158,6 +188,10 @@ def add_causal_lags_and_sncf_patterns(
     df: pd.DataFrame,
     forecast_start: pd.Timestamp | None = None,
     forecast_cutoff: pd.Timestamp | None = None,
+    training_horizon_days: int | None = None,
+    recent_dynamics: bool = False,
+    real_lags_only: bool = False,
+    availability_delay_hours: int = 0,
 ) -> pd.DataFrame:
     """Construit des variables à partir des seules mesures disponibles à l'émission.
 
@@ -165,7 +199,16 @@ def add_causal_lags_and_sncf_patterns(
     finale, aucune mesure postérieure au gel du 6 novembre n'est utilisée.
     """
     df = df.sort_values(["arc", "t_1h"]).reset_index(drop=True).copy()
-    available_at = df["t_1h"] - FORECAST_HORIZON
+    if training_horizon_days is not None and (forecast_start is not None or forecast_cutoff is not None):
+        raise ValueError("Un horizon d'entraînement ne peut pas être combiné à une émission fixe")
+    if training_horizon_days is not None:
+        if training_horizon_days not in range(1, 6):
+            raise ValueError("L'horizon d'entraînement doit être compris entre 1 et 5 jours")
+        # Une émission à 23 h précède le premier jour de chaque fenêtre.
+        available_at = df["t_1h"].dt.normalize() - pd.Timedelta(days=training_horizon_days - 1, hours=1)
+        df["horizon_hours"] = ((df["t_1h"] - available_at) / pd.Timedelta(hours=1)).astype(int)
+    else:
+        available_at = df["t_1h"] - FORECAST_HORIZON
     if (forecast_start is None) != (forecast_cutoff is None):
         raise ValueError("forecast_start et forecast_cutoff doivent être fournis ensemble")
     if forecast_start is not None:
@@ -173,9 +216,12 @@ def add_causal_lags_and_sncf_patterns(
         if forecast_cutoff >= forecast_start:
             raise ValueError("La date d'émission doit précéder la fenêtre de prévision")
         available_at = available_at.where(df["t_1h"] < forecast_start, forecast_cutoff)
-    else:
+    elif training_horizon_days is None:
         test = df["t_1h"] >= pd.Timestamp(TEST_START)
         available_at = available_at.where(~test, available_at.clip(upper=FORECAST_CUTOFF))
+    if availability_delay_hours < 0:
+        raise ValueError("Le délai de disponibilité doit être positif")
+    available_at = available_at - pd.Timedelta(hours=availability_delay_hours)
     df["available_at"] = available_at
 
     def historical_lookup(source, keys, columns):
@@ -193,10 +239,33 @@ def add_causal_lags_and_sncf_patterns(
 
     for target in ["q", "k"]:
         group = df.groupby("arc")[target]
+        if recent_dynamics:
+            real_lags = []
+            imputed = df.groupby("arc")[f"is_imputed_{target}"]
+            for days in (7, 14, 21):
+                lag = group.shift(24 * days)
+                valid = (imputed.shift(24 * days).eq(0) &
+                         (df["t_1h"] - pd.Timedelta(days=days) <= df["available_at"]))
+                real_lags.append(lag.where(valid))
+            last_week, two_weeks, three_weeks = real_lags
+            samples = pd.concat(real_lags, axis=1)
+            typical = pd.concat([two_weeks, three_weeks], axis=1).mean(axis=1)
+            scale = typical.abs().clip(lower=10.0 if target == "q" else 1.0)
+            df[f"{target}_recent_vs_usual"] = ((last_week - typical) / scale).clip(-5, 5)
+            df[f"{target}_weekly_trend"] = (last_week - three_weeks) / 2
+            df[f"{target}_real_weekly_std"] = samples.std(axis=1)
+            df[f"{target}_real_weekly_count"] = samples.count(axis=1)
+
+            observed = df[(df[f"is_imputed_{target}"] == 0) & df[target].notna()].copy()
+            observed["last_real_time"] = observed["t_1h"]
+            last_time = pd.to_datetime(historical_lookup(observed, ["arc"], ["last_real_time"])["last_real_time"])
+            df[f"{target}_last_real_age_hours"] = (df["available_at"] - last_time) / pd.Timedelta(hours=1)
         for days in (7, 14, 21):
             lag = group.shift(24 * days)
             known = df["t_1h"] - pd.Timedelta(days=days) <= df["available_at"]
-            df[f"{target}_lag_{days * 24}h"] = lag.where(known)
+            real = df.groupby("arc")[f"is_imputed_{target}"].shift(24 * days).eq(0)
+            df[f"{target}_lag_{days * 24}h_real"] = (known & real & lag.notna()).astype(int)
+            df[f"{target}_lag_{days * 24}h"] = lag.where(known & real if real_lags_only else known)
 
         # En cas de capteur indisponible, utiliser seulement les dernières
         # observations effectivement connues au moment de la prévision.
@@ -205,7 +274,7 @@ def add_causal_lags_and_sncf_patterns(
         for i in range(3):
             real[f"real_week_{i}"] = real.groupby(keys)[target].shift(i)
         past = historical_lookup(real, keys, [f"real_week_{i}" for i in range(3)])
-        dead = (df["arc"] == "Champs-Elysées") & (df["t_1h"] >= "2025-12-15")
+        dead = (df["arc"] == "Champs-Elysées") & (df["t_1h"] >= "2025-12-15") & (not real_lags_only)
         for i, days in enumerate((7, 14, 21)):
             df.loc[dead, f"{target}_lag_{days * 24}h"] = past.loc[dead, f"real_week_{i}"]
 
@@ -220,7 +289,13 @@ def add_causal_lags_and_sncf_patterns(
         history = historical_lookup(real, regime_keys, ["history_mean"])["history_mean"]
         df[f"{target}_regime_hist_mean"] = history.fillna(df[f"{target}_weekly_mean_3w"])
 
-        ratio = (df[target] / (df[f"{target}_weekly_mean_3w"] + 1e-3)).clip(0, 3)
+        # L'anomalie de l'événement historique doit être identique quel que
+        # soit l'horizon de l'exemple qui la consulte. Son profil est figé
+        # cinq jours (et le délai simulé) avant cet événement.
+        event_lags = [group.shift(24 * days) if 24 * days >= 120 + availability_delay_hours else pd.Series(np.nan, index=df.index)
+                      for days in (7, 14, 21)]
+        event_profile = sum(lag * weight for lag, weight in zip(event_lags, (0.5, 0.3, 0.2)))
+        ratio = (df[target] / (event_profile + 1e-3)).clip(0, 3)
         smart = df[f"{target}_weekly_mean_3w"].copy()
         for event_date, mask in [
             ("2025-11-10", df["bridge_intensity"] > 0),
@@ -256,11 +331,15 @@ def run_feature_pipeline() -> None:
 
     df_full = extend_grid_to_test_period(df_clean, df_weather)
     df_feat = add_calendar_and_event_features(df_full)
-    df_feat = add_causal_lags_and_sncf_patterns(df_feat)
+    df_feat = add_causal_lags_and_sncf_patterns(
+        df_feat, forecast_start=pd.Timestamp(TEST_START), forecast_cutoff=FORECAST_CUTOFF,
+        recent_dynamics=True,
+    )
 
     print("5/5 - Séparation et sauvegarde de features_train.csv et features_test_nov7_11.csv...")
     mask_test = (df_feat["t_1h"] >= TEST_START) & (df_feat["t_1h"] <= TEST_END)
     df_test = df_feat.loc[mask_test].copy()
+    df_test["horizon_hours"] = ((df_test["t_1h"] - FORECAST_CUTOFF) / pd.Timedelta(hours=1)).astype(int)
 
     # On retire les 7 premiers jours (initialisation du lag 168h)
     min_train_date = df_feat["t_1h"].min() + pd.Timedelta(days=7)

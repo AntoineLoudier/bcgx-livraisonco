@@ -1,0 +1,70 @@
+{
+  "selection_start_utc": "2025-10-01T00:00:00Z",
+  "selection_end_utc_exclusive": "2026-05-01T00:00:00Z",
+  "selection": [
+    {
+      "iu_ac": "4274",
+      "libelle": "Av_Champs_Elysees",
+      "libelle_nd_amont": "Av_Champs_Elysees-Berri",
+      "libelle_nd_aval": "Av_Champs_Elysees-La_Boetie",
+      "n": 4577
+    },
+    {
+      "iu_ac": "5664",
+      "libelle": "Convention",
+      "libelle_nd_amont": "Convention-Croix_Nivert",
+      "libelle_nd_aval": "Lecourbe-Convention",
+      "n": 4506
+    },
+    {
+      "iu_ac": "5674",
+      "libelle": "Convention",
+      "libelle_nd_amont": "Convention-Blomet",
+      "libelle_nd_aval": "Convention-Vaugirard",
+      "n": 4285
+    },
+    {
+      "iu_ac": "192",
+      "libelle": "Sts_Peres",
+      "libelle_nd_amont": "Sts_Peres-Universite",
+      "libelle_nd_aval": "Bd_St_Germain-Sts_Peres",
+      "n": 4238
+    },
+    {
+      "iu_ac": "5586",
+      "libelle": "Lecourbe",
+      "libelle_nd_amont": "Lecourbe-Groult",
+      "libelle_nd_aval": "Lecourbe-Convention",
+      "n": 3071
+    },
+    {
+      "iu_ac": "5672",
+      "libelle": "Convention",
+      "libelle_nd_amont": "Convention-Blomet",
+      "libelle_nd_aval": "Lecourbe-Convention",
+      "n": 2250
+    },
+    {
+      "iu_ac": "5675",
+      "libelle": "Convention",
+      "libelle_nd_amont": "Convention-Vaugirard",
+      "libelle_nd_aval": "Convention-Blomet",
+      "n": 2168
+    },
+    {
+      "iu_ac": "4265",
+      "libelle": "Av_Champs_Elysees",
+      "libelle_nd_amont": "Av_Champs_Elysees-Washington",
+      "libelle_nd_aval": "Av_Champs_Elysees-Balzac",
+      "n": 1807
+    },
+    {
+      "iu_ac": "4267",
+      "libelle": "Av_Champs_Elysees",
+      "libelle_nd_amont": "Av_Champs_Elysees-Balzac",
+      "libelle_nd_aval": "Av_Champs_Elysees-Washington",
+      "n": 1513
+    }
+  ],
+  "raw_sha256": "e085fe4e8f3d25bc96b76010f272c6f64e1a8299a674de89219aed8d7f34d090"
+}

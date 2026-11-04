@@ -1,0 +1,66 @@
+{
+  "cutoff": "2026-11-02 00:00:00",
+  "method": "LightGBM regression_l1",
+  "emission": "23:00 heure locale, prévision des cinq jours suivants",
+  "horizon_hours": "1-120 en heures locales",
+  "targets": {
+    "q": {
+      "features": [
+        "arc_id",
+        "hour",
+        "dayofweek",
+        "month",
+        "hour_sin",
+        "hour_cos",
+        "dow_sin",
+        "dow_cos",
+        "is_weekend",
+        "is_public_holiday",
+        "is_school_holiday",
+        "bridge_intensity",
+        "day_regime",
+        "is_paris_respire",
+        "is_armistice",
+        "is_armistice_parade_hours",
+        "q_lag_168h",
+        "q_lag_336h",
+        "q_lag_504h",
+        "q_weekly_mean_3w",
+        "q_weekly_std_3w",
+        "q_regime_hist_mean",
+        "q_smart_expected",
+        "horizon_hours"
+      ],
+      "training_examples": 94080
+    },
+    "k": {
+      "features": [
+        "arc_id",
+        "hour",
+        "dayofweek",
+        "month",
+        "hour_sin",
+        "hour_cos",
+        "dow_sin",
+        "dow_cos",
+        "is_weekend",
+        "is_public_holiday",
+        "is_school_holiday",
+        "bridge_intensity",
+        "day_regime",
+        "is_paris_respire",
+        "is_armistice",
+        "is_armistice_parade_hours",
+        "k_lag_168h",
+        "k_lag_336h",
+        "k_lag_504h",
+        "k_weekly_mean_3w",
+        "k_weekly_std_3w",
+        "k_regime_hist_mean",
+        "k_smart_expected",
+        "horizon_hours"
+      ],
+      "training_examples": 94080
+    }
+  }
+}

@@ -33,7 +33,7 @@ def window_starts(frame: pd.DataFrame, count: int, step_days: int) -> list[pd.Ti
     return starts
 
 
-def build_window(frame: pd.DataFrame, start: pd.Timestamp) -> pd.DataFrame:
+def build_window(frame: pd.DataFrame, start: pd.Timestamp, manual_bridge: bool = True, recent_dynamics: bool = False, real_lags_only: bool = False, availability_delay_hours: int = 0) -> pd.DataFrame:
     """Masque toutes les cibles futures avant de recalculer les variables."""
     start = pd.Timestamp(start)
     if start != start.normalize():
@@ -42,7 +42,7 @@ def build_window(frame: pd.DataFrame, start: pd.Timestamp) -> pd.DataFrame:
     end = start + pd.Timedelta(hours=WINDOW_HOURS - 1)
     if end > frame.t_1h.max():
         raise ValueError(f"Fenêtre incomplète : {start.date()} à {end.date()}")
-    historical = frame[frame.t_1h <= cutoff].copy()
+    historical = frame[frame.t_1h <= cutoff - pd.Timedelta(hours=availability_delay_hours)].copy()
     if historical.empty:
         raise ValueError("Aucun historique disponible avant la fenêtre")
     if historical.duplicated(["arc", "t_1h"]).any():
@@ -53,7 +53,8 @@ def build_window(frame: pd.DataFrame, start: pd.Timestamp) -> pd.DataFrame:
     for col in ("is_imputed_q", "is_imputed_k"):
         data[col] = data[col].fillna(1)
     features = add_causal_lags_and_sncf_patterns(
-        add_calendar_and_event_features(data), forecast_start=start, forecast_cutoff=cutoff
+        add_calendar_and_event_features(data, manual_bridge=manual_bridge), forecast_start=start,
+        forecast_cutoff=cutoff, recent_dynamics=recent_dynamics, real_lags_only=real_lags_only, availability_delay_hours=availability_delay_hours
     )
     features = features[features.t_1h.between(start, end)].copy()
     truth = frame.loc[frame.t_1h.between(start, end), ["arc", "t_1h", "q", "k", "is_imputed_q", "is_imputed_k"]]
@@ -61,6 +62,7 @@ def build_window(frame: pd.DataFrame, start: pd.Timestamp) -> pd.DataFrame:
     result = features.merge(truth, on=["arc", "t_1h"], how="left", validate="one_to_one")
     result["window_start"] = start
     result["forecast_cutoff"] = cutoff
+    result["horizon_hours"] = ((result["t_1h"] - cutoff) / pd.Timedelta(hours=1)).astype(int)
     return result
 
 

@@ -52,4 +52,20 @@ Après la validation, deux modèles sont entraînés à nouveau jusqu'à la dern
 
 `python main_compare_streets.py` réentraîne et compare des modèles globaux et par rue sur ces fenêtres, puis enregistre les six modèles locaux dans `models/per_street/`. Les résultats figurent dans [la comparaison des modèles par rue](modeles_par_rue.md).
 
+## Entraînement multi-horizon
+
+`python main_multi_horizon.py` entraîne une variante pour une émission quotidienne à 23 h suivie des cinq jours calendaires suivants. Chaque mesure historique devient jusqu'à cinq exemples d'entraînement, correspondant aux cinq émissions quotidiennes possibles ; `horizon_hours` indique la distance, de 1 à 120 heures locales, entre l'émission et la cible. Les retards et profils sont recalculés avec les seules données disponibles pour chaque émission. Les cibles non observées sont exclues. Les heures répétées ou manquantes au changement d'heure suivent la convention de la grille locale agrégée ; il ne s'agit pas d'une durée UTC exacte.
+
+Les deux modèles sont enregistrés dans `models/multi_horizon/` avec leurs variables et leur date de coupure ; les modèles à horizon fixe précédents sont conservés. Après `python src/features.py`, `features_test_nov7_11.csv` contient les 360 lignes et leur `horizon_hours`, avec une émission au 6 novembre 23 h. Ces modèles restent expérimentaux : ils ne sont pas encore raccordés à `main_predict.py`.
+
+La commande compare par défaut les variantes sur huit fenêtres historiques de cinq jours, en réentraînant les deux modèles dans chaque fenêtre. Les fichiers `comparison.csv`, `by_horizon.csv`, `by_window.csv` et `predictions.csv` se trouvent dans `data/processed/multi_horizon_analysis/`. Les métriques ne portent que sur les cibles observées et les mêmes heures pour les deux variantes. Les cinq exemples construits à partir d'une même cible ne sont pas indépendants. Les fenêtres récentes ne permettent pas d'évaluer les Champs-Élysées et ne constituent pas un jeu de test final indépendant de toutes les analyses précédentes.
+
+`python main_recency.py` compare, avec ce modèle multi-horizon, les cibles des trois et six derniers mois à tout l'historique et à une pondération de demi-vie 180 jours. L'[étude d'ancienneté](pondération_recente.md) détaille les résultats et les limites de couverture des rues et des fériés.
+
+`python main_holidays.py` compare quatre variantes croisant un calendrier de fériés enrichi et l'ablation des coefficients et du régime manuels des ponts. La [comparaison des fériés et ponts](feries_et_ponts.md) décrit les variables, les mesures et leurs limites. Ces options restent expérimentales : les modèles existants ne sont pas remplacés.
+
+`python main_dynamics.py` compare la référence à une variante ajoutant tendances hebdomadaires, variabilité, nombre de mesures réelles et âge de la dernière mesure. Le calcul respecte la date d'émission et les indicateurs d'imputation ; les définitions et résultats figurent dans [l'étude de dynamique récente](dynamique_recente.md). Les modèles expérimentaux sont séparés de la référence.
+
+`python main_blend.py` compare le modèle multi-horizon à un mélange avec la moyenne des semaines précédentes. Les poids sont sélectionnés séparément pour chaque cible sur des fenêtres antérieures terminées ; la méthode et les limites sont décrites dans [l'étude du mélange](melange_previsions.md).
+
 Les données téléchargées et les CSV générés ne sont pas versionnés. Les quatre fenêtres récentes ne contiennent pas de valeurs observées aux Champs-Élysées ; leurs résultats ne permettent donc pas d'évaluer ce tronçon, ni de valider spécifiquement le comportement des jours fériés ou des ponts de novembre.

@@ -38,7 +38,49 @@ python -m unittest discover -s tests -v
 # 8. Entraîner et évaluer les premiers modèles
 python main_train.py
 
+# 9. Comparer l'entraînement à horizons de 1 à 5 jours
+python main_multi_horizon.py
+
+# 10. Comparer les fenêtres d'entraînement et la pondération temporelle
+python main_recency.py
+
+# 11. Comparer les variables de fériés et la correction des ponts
+python main_holidays.py
+
+# 12. Comparer les variables de dynamique récente
+python main_dynamics.py
+
+# 13. Comparer un mélange calibré sur les fenêtres passées
+python main_blend.py
+
+# 14. Diagnostiquer les erreurs à partir des prévisions historiques du mélange
+python main_error_diagnostics.py
+
+# 15. Comparer profils corrigés, variables croisées, modèles, pannes et intervalles
+python main_new_experiments.py
+
+# 16. Télécharger le panel public et les voisins de la sélection conservée
+python -m src.panel_data --selection configs/panel_selection.json
+python -m src.panel_data --neighbors-only --selection configs/panel_neighbors_selection.json
+python -m src.panel_preprocessing
+
+# 17. Comparer le transfert et les capteurs adjacents
+python main_panel_transfer.py --windows 4 --outages
+python main_panel_neighbors.py --windows 2 --outages --output data/processed/panel_neighbors_directed
+
+# 18. Comparer les trajectoires à sorties multiples (PyTorch CPU)
+python main_trajectory.py --windows 4 --delays 0 120
+
+# 19. Comparer les avis d'événements vérifiés et les scénarios conditionnels
+python main_event_restrictions.py --as-of '2026-11-04 00:00'
+
+# 20. Comparer quatre familles et les ablations de preprocessing/variables
+python main_tabular_benchmark.py
+
 ```
+
+Le protocole, les variantes et les résultats de ce dernier benchmark sont décrits
+dans [la comparaison modèles et variables](docs/benchmark_modeles_features.md).
 
 ## 📂 Architecture du Projet
 
