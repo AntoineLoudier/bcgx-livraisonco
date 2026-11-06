@@ -1,0 +1,5 @@
+# Preserve presentation and mockup assets as binary files.
+*.pdf binary
+*.pptx binary
+*.png binary
+*.zip binary

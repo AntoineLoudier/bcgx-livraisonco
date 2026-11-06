@@ -1,0 +1,22 @@
+{
+  "statut": "Simulation illustrative ; aucun gain de temps ou de coût mesuré",
+  "heures_payees_par_jour": 100,
+  "cout_horaire_du_cas_eur": 10,
+  "jours_par_an": 250,
+  "part_conduite": 0.4,
+  "reductions_conduite": [
+    0.1,
+    0.2,
+    0.3
+  ],
+  "parts_recuperables": [
+    0.3,
+    0.5,
+    0.7
+  ],
+  "repere": {
+    "reduction_conduite": 0.2,
+    "part_recuperable": 0.7
+  },
+  "cout_solution": "À chiffrer ; aucun devis disponible"
+}

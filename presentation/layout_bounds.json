@@ -1,0 +1,2162 @@
+[
+  {
+    "page": 1,
+    "text": "LIVRAISONCO",
+    "x": 56,
+    "y": 25,
+    "w": 200,
+    "h": 19.86
+  },
+  {
+    "page": 1,
+    "text": "Synthèse et recommandation",
+    "x": 855,
+    "y": 25,
+    "w": 370,
+    "h": 19.86
+  },
+  {
+    "page": 1,
+    "text": "Réduire les heures de livraison en adaptant les créneaux ;\ncommencer le pilote sur Convention",
+    "x": 56,
+    "y": 74,
+    "w": 1168,
+    "h": 84
+  },
+  {
+    "page": 1,
+    "text": "Le modèle améliore la prévision du trafic. La prochaine étape est de mesurer son effet sur les tournées.",
+    "x": 56,
+    "y": 190,
+    "w": 1168,
+    "h": 25.96
+  },
+  {
+    "page": 1,
+    "text": "Sources : support du 5 novembre, p. 7 et 13. Simulation économique ; gains de temps et économies non observés.",
+    "x": 56,
+    "y": 656,
+    "w": 1168,
+    "h": 19
+  },
+  {
+    "page": 1,
+    "text": "Les Architectes  |  Datathon BCG X × CentraleSupélec  |  6 novembre 2026",
+    "x": 56,
+    "y": 697,
+    "w": 1000,
+    "h": 17.42
+  },
+  {
+    "page": 1,
+    "text": "1",
+    "x": 1185,
+    "y": 694,
+    "w": 40,
+    "h": 21.08
+  },
+  {
+    "page": 1,
+    "text": "01",
+    "x": 56,
+    "y": 247,
+    "w": 45,
+    "h": 33.28
+  },
+  {
+    "page": 1,
+    "text": "Un premier cas d’usage sur Convention",
+    "x": 111,
+    "y": 247,
+    "w": 690,
+    "h": 33.28
+  },
+  {
+    "page": 1,
+    "text": "−21 % de RMSE sur le débit et −25 % sur l’occupation face à J−7. Saint-Pères permet de tester un cas où le gain est plus faible.",
+    "x": 111,
+    "y": 285,
+    "w": 680,
+    "h": 55.24
+  },
+  {
+    "page": 1,
+    "text": "02",
+    "x": 56,
+    "y": 362,
+    "w": 45,
+    "h": 33.28
+  },
+  {
+    "page": 1,
+    "text": "Une décision précise à tester",
+    "x": 111,
+    "y": 362,
+    "w": 690,
+    "h": 33.28
+  },
+  {
+    "page": 1,
+    "text": "Comparer les créneaux d’une même tournée, puis choisir le moins coûteux parmi ceux compatibles avec les contraintes clients.",
+    "x": 111,
+    "y": 400,
+    "w": 680,
+    "h": 55.24
+  },
+  {
+    "page": 1,
+    "text": "03",
+    "x": 56,
+    "y": 477,
+    "w": 45,
+    "h": 33.28
+  },
+  {
+    "page": 1,
+    "text": "Un périmètre à exclure du pilote autonome",
+    "x": 111,
+    "y": 477,
+    "w": 690,
+    "h": 33.28
+  },
+  {
+    "page": 1,
+    "text": "Champs-Élysées : aucune mesure récente. Une validation de 2025 ne suffit pas pour automatiser une décision en novembre 2026.",
+    "x": 111,
+    "y": 515,
+    "w": 680,
+    "h": 55.24
+  },
+  {
+    "page": 1,
+    "text": "ORDRE DE GRANDEUR",
+    "x": 877,
+    "y": 250,
+    "w": 335,
+    "h": 21.08
+  },
+  {
+    "page": 1,
+    "text": "1 h payée évitée\npar jour",
+    "x": 877,
+    "y": 291,
+    "w": 335,
+    "h": 79.64
+  },
+  {
+    "page": 1,
+    "text": "= 2 500 €/an",
+    "x": 877,
+    "y": 386,
+    "w": 335,
+    "h": 43.04
+  },
+  {
+    "page": 1,
+    "text": "À 10 €/h et 250 jours/an.\nHors coût de la solution.",
+    "x": 877,
+    "y": 441,
+    "w": 335,
+    "h": 55.24
+  },
+  {
+    "page": 1,
+    "text": "À vérifier : le temps libéré peut-il réduire les heures payées ?",
+    "x": 877,
+    "y": 521,
+    "w": 335,
+    "h": 84.52
+  },
+  {
+    "page": 1,
+    "text": "Décision proposée : autoriser un pilote de planification et l’accès aux données de tournées.",
+    "x": 72,
+    "y": 616,
+    "w": 1148,
+    "h": 30.84
+  },
+  {
+    "page": 2,
+    "text": "LIVRAISONCO",
+    "x": 56,
+    "y": 25,
+    "w": 200,
+    "h": 19.86
+  },
+  {
+    "page": 2,
+    "text": "Économie | Simulation",
+    "x": 855,
+    "y": 25,
+    "w": 370,
+    "h": 19.86
+  },
+  {
+    "page": 2,
+    "text": "5,6 h payées évitées par jour représenteraient 14 k€/an ;\nla récupération du temps est l’hypothèse décisive",
+    "x": 56,
+    "y": 74,
+    "w": 1168,
+    "h": 84
+  },
+  {
+    "page": 2,
+    "text": "Base illustrative : 100 h payées/jour, dont 40 % de conduite ; 10 €/h et 250 jours/an.",
+    "x": 56,
+    "y": 190,
+    "w": 1168,
+    "h": 25.96
+  },
+  {
+    "page": 2,
+    "text": "Calcul : part de conduite × réduction de conduite × part récupérable. Coûts horaires seuls ; coût de solution à chiffrer.",
+    "x": 56,
+    "y": 656,
+    "w": 1168,
+    "h": 19
+  },
+  {
+    "page": 2,
+    "text": "Les Architectes  |  Datathon BCG X × CentraleSupélec  |  6 novembre 2026",
+    "x": 56,
+    "y": 697,
+    "w": 1000,
+    "h": 17.42
+  },
+  {
+    "page": 2,
+    "text": "2",
+    "x": 1185,
+    "y": 694,
+    "w": 40,
+    "h": 21.08
+  },
+  {
+    "page": 2,
+    "text": "Du temps de conduite aux heures évitées",
+    "x": 56,
+    "y": 243,
+    "w": 555,
+    "h": 32.06
+  },
+  {
+    "page": 2,
+    "text": "0 h",
+    "x": 70,
+    "y": 456.0,
+    "w": 60,
+    "h": 19.86
+  },
+  {
+    "page": 2,
+    "text": "20 h",
+    "x": 70,
+    "y": 371.0,
+    "w": 60,
+    "h": 19.86
+  },
+  {
+    "page": 2,
+    "text": "40 h",
+    "x": 70,
+    "y": 286.0,
+    "w": 60,
+    "h": 19.86
+  },
+  {
+    "page": 2,
+    "text": "40 h",
+    "x": 134,
+    "y": 273.0,
+    "w": 130,
+    "h": 34.5
+  },
+  {
+    "page": 2,
+    "text": "Conduite\nactuelle",
+    "x": 96,
+    "y": 492,
+    "w": 154,
+    "h": 47.92
+  },
+  {
+    "page": 2,
+    "text": "8 h",
+    "x": 302,
+    "y": 409.0,
+    "w": 130,
+    "h": 34.5
+  },
+  {
+    "page": 2,
+    "text": "Temps libéré\nsi −20 %",
+    "x": 264,
+    "y": 492,
+    "w": 154,
+    "h": 47.92
+  },
+  {
+    "page": 2,
+    "text": "5,6 h",
+    "x": 470,
+    "y": 419.2,
+    "w": 130,
+    "h": 34.5
+  },
+  {
+    "page": 2,
+    "text": "Heures évitées\nsi 70 % récupérés",
+    "x": 432,
+    "y": 492,
+    "w": 154,
+    "h": 47.92
+  },
+  {
+    "page": 2,
+    "text": "Scénario repère : 5,6 % des coûts horaires évitables.",
+    "x": 56,
+    "y": 556,
+    "w": 570,
+    "h": 29.62
+  },
+  {
+    "page": 2,
+    "text": "Sensibilité de la baisse des coûts horaires",
+    "x": 681,
+    "y": 243,
+    "w": 540,
+    "h": 32.06
+  },
+  {
+    "page": 2,
+    "text": "Part du temps libéré réellement récupérée",
+    "x": 826,
+    "y": 286,
+    "w": 390,
+    "h": 22.3
+  },
+  {
+    "page": 2,
+    "text": "30%",
+    "x": 858,
+    "y": 316,
+    "w": 110,
+    "h": 28.4
+  },
+  {
+    "page": 2,
+    "text": "50%",
+    "x": 981,
+    "y": 316,
+    "w": 110,
+    "h": 28.4
+  },
+  {
+    "page": 2,
+    "text": "70%",
+    "x": 1104,
+    "y": 316,
+    "w": 110,
+    "h": 28.4
+  },
+  {
+    "page": 2,
+    "text": "Baisse du temps\nde conduite",
+    "x": 681,
+    "y": 346,
+    "w": 152,
+    "h": 40.6
+  },
+  {
+    "page": 2,
+    "text": "−10%",
+    "x": 697,
+    "y": 401,
+    "w": 110,
+    "h": 32.06
+  },
+  {
+    "page": 2,
+    "text": "1,2 %",
+    "x": 851,
+    "y": 398,
+    "w": 90,
+    "h": 32.06
+  },
+  {
+    "page": 2,
+    "text": "2,0 %",
+    "x": 974,
+    "y": 398,
+    "w": 90,
+    "h": 32.06
+  },
+  {
+    "page": 2,
+    "text": "2,8 %",
+    "x": 1097,
+    "y": 398,
+    "w": 90,
+    "h": 32.06
+  },
+  {
+    "page": 2,
+    "text": "−20%",
+    "x": 697,
+    "y": 456,
+    "w": 110,
+    "h": 32.06
+  },
+  {
+    "page": 2,
+    "text": "2,4 %",
+    "x": 851,
+    "y": 453,
+    "w": 90,
+    "h": 32.06
+  },
+  {
+    "page": 2,
+    "text": "4,0 %",
+    "x": 974,
+    "y": 453,
+    "w": 90,
+    "h": 32.06
+  },
+  {
+    "page": 2,
+    "text": "5,6 %",
+    "x": 1097,
+    "y": 453,
+    "w": 90,
+    "h": 32.06
+  },
+  {
+    "page": 2,
+    "text": "−30%",
+    "x": 697,
+    "y": 511,
+    "w": 110,
+    "h": 32.06
+  },
+  {
+    "page": 2,
+    "text": "3,6 %",
+    "x": 851,
+    "y": 508,
+    "w": 90,
+    "h": 32.06
+  },
+  {
+    "page": 2,
+    "text": "6,0 %",
+    "x": 974,
+    "y": 508,
+    "w": 90,
+    "h": 32.06
+  },
+  {
+    "page": 2,
+    "text": "8,4 %",
+    "x": 1097,
+    "y": 508,
+    "w": 90,
+    "h": 32.06
+  },
+  {
+    "page": 2,
+    "text": "Valeurs simulées ; aucun scénario n’est une prévision.",
+    "x": 681,
+    "y": 556,
+    "w": 535,
+    "h": 24.74
+  },
+  {
+    "page": 2,
+    "text": "À ce niveau de gain, un coût total de solution supérieur à 14 k€ en année 1 annulerait les économies.",
+    "x": 72,
+    "y": 616,
+    "w": 1148,
+    "h": 30.84
+  },
+  {
+    "page": 3,
+    "text": "LIVRAISONCO",
+    "x": 56,
+    "y": 25,
+    "w": 200,
+    "h": 19.86
+  },
+  {
+    "page": 3,
+    "text": "Performance | Résultats reportés",
+    "x": 855,
+    "y": 25,
+    "w": 370,
+    "h": 19.86
+  },
+  {
+    "page": 3,
+    "text": "Le gain sur le débit atteint 21 % sur Convention,\nmais seulement 3 % sur Saint-Pères",
+    "x": 56,
+    "y": 74,
+    "w": 1168,
+    "h": 84
+  },
+  {
+    "page": 3,
+    "text": "RMSE sur quatre fenêtres de cinq jours ; comparaison au trafic de la même heure à J−7.",
+    "x": 56,
+    "y": 190,
+    "w": 1168,
+    "h": 25.96
+  },
+  {
+    "page": 3,
+    "text": "Source : support initial, p. 13. Pourcentages reportés avant arrondi. Validation sur cibles observées selon le support ; incertitude non fournie.",
+    "x": 56,
+    "y": 656,
+    "w": 1168,
+    "h": 19
+  },
+  {
+    "page": 3,
+    "text": "Les Architectes  |  Datathon BCG X × CentraleSupélec  |  6 novembre 2026",
+    "x": 56,
+    "y": 697,
+    "w": 1000,
+    "h": 17.42
+  },
+  {
+    "page": 3,
+    "text": "3",
+    "x": 1185,
+    "y": 694,
+    "w": 40,
+    "h": 21.08
+  },
+  {
+    "page": 3,
+    "text": "Débit q — RMSE (véhicules/heure)",
+    "x": 56,
+    "y": 243,
+    "w": 725,
+    "h": 32.06
+  },
+  {
+    "page": 3,
+    "text": "J−7",
+    "x": 81,
+    "y": 279,
+    "w": 160,
+    "h": 25.96
+  },
+  {
+    "page": 3,
+    "text": "Ancrage",
+    "x": 207,
+    "y": 279,
+    "w": 160,
+    "h": 25.96
+  },
+  {
+    "page": 3,
+    "text": "Modèle final",
+    "x": 393,
+    "y": 279,
+    "w": 160,
+    "h": 25.96
+  },
+  {
+    "page": 3,
+    "text": "Convention",
+    "x": 56,
+    "y": 355,
+    "w": 195,
+    "h": 32.06
+  },
+  {
+    "page": 3,
+    "text": "79,1",
+    "x": 612.0849999999999,
+    "y": 330,
+    "w": 80,
+    "h": 25.96
+  },
+  {
+    "page": 3,
+    "text": "74,3",
+    "x": 591.2049999999999,
+    "y": 358,
+    "w": 80,
+    "h": 25.96
+  },
+  {
+    "page": 3,
+    "text": "62,5",
+    "x": 539.875,
+    "y": 386,
+    "w": 80,
+    "h": 25.96
+  },
+  {
+    "page": 3,
+    "text": "−21,0 % vs J−7",
+    "x": 56,
+    "y": 390,
+    "w": 197,
+    "h": 25.96
+  },
+  {
+    "page": 3,
+    "text": "Saint-Pères",
+    "x": 56,
+    "y": 498,
+    "w": 195,
+    "h": 32.06
+  },
+  {
+    "page": 3,
+    "text": "83,2",
+    "x": 629.92,
+    "y": 473,
+    "w": 80,
+    "h": 25.96
+  },
+  {
+    "page": 3,
+    "text": "91,4",
+    "x": 665.5899999999999,
+    "y": 501,
+    "w": 80,
+    "h": 25.96
+  },
+  {
+    "page": 3,
+    "text": "80,4",
+    "x": 617.74,
+    "y": 529,
+    "w": 80,
+    "h": 25.96
+  },
+  {
+    "page": 3,
+    "text": "−3,3 % vs J−7",
+    "x": 56,
+    "y": 533,
+    "w": 197,
+    "h": 25.96
+  },
+  {
+    "page": 3,
+    "text": "0",
+    "x": 251.0,
+    "y": 591,
+    "w": 45,
+    "h": 19.86
+  },
+  {
+    "page": 3,
+    "text": "20",
+    "x": 338.0,
+    "y": 591,
+    "w": 45,
+    "h": 19.86
+  },
+  {
+    "page": 3,
+    "text": "40",
+    "x": 425.0,
+    "y": 591,
+    "w": 45,
+    "h": 19.86
+  },
+  {
+    "page": 3,
+    "text": "60",
+    "x": 512.0,
+    "y": 591,
+    "w": 45,
+    "h": 19.86
+  },
+  {
+    "page": 3,
+    "text": "80",
+    "x": 599.0,
+    "y": 591,
+    "w": 45,
+    "h": 19.86
+  },
+  {
+    "page": 3,
+    "text": "100",
+    "x": 686.0,
+    "y": 591,
+    "w": 45,
+    "h": 19.86
+  },
+  {
+    "page": 3,
+    "text": "Occupation k",
+    "x": 822,
+    "y": 243,
+    "w": 400,
+    "h": 32.06
+  },
+  {
+    "page": 3,
+    "text": "RMSE en points de pourcentage",
+    "x": 822,
+    "y": 276,
+    "w": 400,
+    "h": 24.74
+  },
+  {
+    "page": 3,
+    "text": "Convention",
+    "x": 822,
+    "y": 319,
+    "w": 390,
+    "h": 29.62
+  },
+  {
+    "page": 3,
+    "text": "2,81 → 2,11",
+    "x": 822,
+    "y": 350,
+    "w": 200,
+    "h": 32.06
+  },
+  {
+    "page": 3,
+    "text": "−24,9 %",
+    "x": 1059,
+    "y": 350,
+    "w": 164,
+    "h": 32.06
+  },
+  {
+    "page": 3,
+    "text": "Saint-Pères",
+    "x": 822,
+    "y": 405,
+    "w": 390,
+    "h": 29.62
+  },
+  {
+    "page": 3,
+    "text": "2,60 → 2,22",
+    "x": 822,
+    "y": 436,
+    "w": 200,
+    "h": 32.06
+  },
+  {
+    "page": 3,
+    "text": "−14,8 %",
+    "x": 1059,
+    "y": 436,
+    "w": 164,
+    "h": 32.06
+  },
+  {
+    "page": 3,
+    "text": "Champs-Élysées : à part",
+    "x": 822,
+    "y": 515,
+    "w": 400,
+    "h": 29.62
+  },
+  {
+    "page": 3,
+    "text": "Validation en 2025 ; capteur muet depuis le 19/11/2025. Performance 2026 non démontrée.",
+    "x": 822,
+    "y": 549,
+    "w": 395,
+    "h": 77.19999999999999
+  },
+  {
+    "page": 4,
+    "text": "LIVRAISONCO",
+    "x": 56,
+    "y": 25,
+    "w": 200,
+    "h": 19.86
+  },
+  {
+    "page": 4,
+    "text": "Modèle | Principe",
+    "x": 855,
+    "y": 25,
+    "w": 370,
+    "h": 19.86
+  },
+  {
+    "page": 4,
+    "text": "Le profil hebdomadaire fournit le niveau attendu ;\nles arbres apprennent la correction à apporter",
+    "x": 56,
+    "y": 74,
+    "w": 1168,
+    "h": 84
+  },
+  {
+    "page": 4,
+    "text": "Du 7 au 11 novembre 2026 : 3 rues × 120 heures = 360 lignes, avec débit q et occupation k.",
+    "x": 56,
+    "y": 190,
+    "w": 1168,
+    "h": 25.96
+  },
+  {
+    "page": 4,
+    "text": "Source : support initial, p. 4 et 14. Architecture reportée ; disponibilité historique de la météo à vérifier dans les backtests.",
+    "x": 56,
+    "y": 656,
+    "w": 1168,
+    "h": 19
+  },
+  {
+    "page": 4,
+    "text": "Les Architectes  |  Datathon BCG X × CentraleSupélec  |  6 novembre 2026",
+    "x": 56,
+    "y": 697,
+    "w": 1000,
+    "h": 17.42
+  },
+  {
+    "page": 4,
+    "text": "4",
+    "x": 1185,
+    "y": 694,
+    "w": 40,
+    "h": 21.08
+  },
+  {
+    "page": 4,
+    "text": "Prévision",
+    "x": 77,
+    "y": 272,
+    "w": 185,
+    "h": 39.38
+  },
+  {
+    "page": 4,
+    "text": "=",
+    "x": 262,
+    "y": 271,
+    "w": 40,
+    "h": 40.6
+  },
+  {
+    "page": 4,
+    "text": "Ancrage calendaire",
+    "x": 320,
+    "y": 272,
+    "w": 355,
+    "h": 39.38
+  },
+  {
+    "page": 4,
+    "text": "+",
+    "x": 693,
+    "y": 271,
+    "w": 40,
+    "h": 40.6
+  },
+  {
+    "page": 4,
+    "text": "Correction LightGBM / XGBoost",
+    "x": 756,
+    "y": 272,
+    "w": 450,
+    "h": 39.38
+  },
+  {
+    "page": 4,
+    "text": "Une référence explicite",
+    "x": 56,
+    "y": 360,
+    "w": 620,
+    "h": 32.06
+  },
+  {
+    "page": 4,
+    "text": "60 % × J−7 + 25 % × J−14 + 15 % × J−21",
+    "x": 56,
+    "y": 400,
+    "w": 625,
+    "h": 33.28
+  },
+  {
+    "page": 4,
+    "text": "Puis ajustement calendaire, notamment pour le pont et le 11 novembre, à partir de l’historique 2025.",
+    "x": 56,
+    "y": 443,
+    "w": 605,
+    "h": 55.24
+  },
+  {
+    "page": 4,
+    "text": "Une correction conditionnelle",
+    "x": 751,
+    "y": 360,
+    "w": 470,
+    "h": 32.06
+  },
+  {
+    "page": 4,
+    "text": "Calendrier, météo, historique et état du trafic : 48 variables dans le support initial.",
+    "x": 751,
+    "y": 400,
+    "w": 470,
+    "h": 55.24
+  },
+  {
+    "page": 4,
+    "text": "Moyenne des deux corrections apprises ; pondération plus forte des heures récentes.",
+    "x": 751,
+    "y": 465,
+    "w": 470,
+    "h": 55.24
+  },
+  {
+    "page": 4,
+    "text": "Règle de validation",
+    "x": 56,
+    "y": 565,
+    "w": 205,
+    "h": 25.96
+  },
+  {
+    "page": 4,
+    "text": "À chaque date de prévision, n’utiliser que l’information disponible à cette date.\nÉvaluer sur les mesures réelles, y compris les jours où les données sont moins fiables.",
+    "x": 281,
+    "y": 561,
+    "w": 942,
+    "h": 55.24
+  },
+  {
+    "page": 5,
+    "text": "LIVRAISONCO",
+    "x": 56,
+    "y": 25,
+    "w": 200,
+    "h": 19.86
+  },
+  {
+    "page": 5,
+    "text": "Passage à la décision",
+    "x": 855,
+    "y": 25,
+    "w": 370,
+    "h": 19.86
+  },
+  {
+    "page": 5,
+    "text": "Le trafic prévu doit être converti en durée de tournée\navant de recommander un changement de créneau",
+    "x": 56,
+    "y": 74,
+    "w": 1168,
+    "h": 84
+  },
+  {
+    "page": 5,
+    "text": "Débit et occupation décrivent le trafic ; ils ne donnent pas directement le temps ou le coût d’une livraison.",
+    "x": 56,
+    "y": 190,
+    "w": 1168,
+    "h": 25.96
+  },
+  {
+    "page": 5,
+    "text": "Tarifs du cas : 10 €/h le jour, 14 €/h la nuit (support initial, p. 7). Calcul à travail et autres coûts identiques ; nuit fixée à 5 h.",
+    "x": 56,
+    "y": 656,
+    "w": 1168,
+    "h": 19
+  },
+  {
+    "page": 5,
+    "text": "Les Architectes  |  Datathon BCG X × CentraleSupélec  |  6 novembre 2026",
+    "x": 56,
+    "y": 697,
+    "w": 1000,
+    "h": 17.42
+  },
+  {
+    "page": 5,
+    "text": "5",
+    "x": 1185,
+    "y": 694,
+    "w": 40,
+    "h": 21.08
+  },
+  {
+    "page": 5,
+    "text": "Ce qui manque entre la prévision et le planning",
+    "x": 56,
+    "y": 243,
+    "w": 660,
+    "h": 32.06
+  },
+  {
+    "page": 5,
+    "text": "1",
+    "x": 67,
+    "y": 295,
+    "w": 24,
+    "h": 27.18
+  },
+  {
+    "page": 5,
+    "text": "Trafic par rue et par heure",
+    "x": 105,
+    "y": 292,
+    "w": 550,
+    "h": 32.06
+  },
+  {
+    "page": 5,
+    "text": "Disponible : q et k, sur trois rues et cinq jours.",
+    "x": 105,
+    "y": 328,
+    "w": 540,
+    "h": 28.4
+  },
+  {
+    "page": 5,
+    "text": "2",
+    "x": 67,
+    "y": 389,
+    "w": 24,
+    "h": 27.18
+  },
+  {
+    "page": 5,
+    "text": "Durées de conduite et d’arrêt",
+    "x": 105,
+    "y": 386,
+    "w": 550,
+    "h": 32.06
+  },
+  {
+    "page": 5,
+    "text": "À calibrer : GPS, arrêts, charge et créneau de passage.",
+    "x": 105,
+    "y": 422,
+    "w": 540,
+    "h": 28.4
+  },
+  {
+    "page": 5,
+    "text": "3",
+    "x": 67,
+    "y": 483,
+    "w": 24,
+    "h": 27.18
+  },
+  {
+    "page": 5,
+    "text": "Tournées et coûts sous contraintes",
+    "x": 105,
+    "y": 480,
+    "w": 550,
+    "h": 32.06
+  },
+  {
+    "page": 5,
+    "text": "À intégrer : clients, capacités, horaires et coûts payés.",
+    "x": 105,
+    "y": 516,
+    "w": 540,
+    "h": 28.4
+  },
+  {
+    "page": 5,
+    "text": "Exemple : jour ou nuit ?",
+    "x": 741,
+    "y": 243,
+    "w": 480,
+    "h": 32.06
+  },
+  {
+    "page": 5,
+    "text": "Coût de la tournée (€) · heures seules",
+    "x": 741,
+    "y": 279,
+    "w": 480,
+    "h": 23.52
+  },
+  {
+    "page": 5,
+    "text": "40",
+    "x": 746,
+    "y": 511.0,
+    "w": 35,
+    "h": 21.08
+  },
+  {
+    "page": 5,
+    "text": "60",
+    "x": 746,
+    "y": 435.4,
+    "w": 35,
+    "h": 21.08
+  },
+  {
+    "page": 5,
+    "text": "80",
+    "x": 746,
+    "y": 359.79999999999995,
+    "w": 35,
+    "h": 21.08
+  },
+  {
+    "page": 5,
+    "text": "4",
+    "x": 778.0,
+    "y": 534,
+    "w": 30,
+    "h": 22.3
+  },
+  {
+    "page": 5,
+    "text": "5",
+    "x": 855.0,
+    "y": 534,
+    "w": 30,
+    "h": 22.3
+  },
+  {
+    "page": 5,
+    "text": "6",
+    "x": 932.0,
+    "y": 534,
+    "w": 30,
+    "h": 22.3
+  },
+  {
+    "page": 5,
+    "text": "7",
+    "x": 1009.0,
+    "y": 534,
+    "w": 30,
+    "h": 22.3
+  },
+  {
+    "page": 5,
+    "text": "8",
+    "x": 1086.0,
+    "y": 534,
+    "w": 30,
+    "h": 22.3
+  },
+  {
+    "page": 5,
+    "text": "9",
+    "x": 1163.0,
+    "y": 534,
+    "w": 30,
+    "h": 22.3
+  },
+  {
+    "page": 5,
+    "text": "Jour : 10 € × durée",
+    "x": 806,
+    "y": 345,
+    "w": 275,
+    "h": 24.74
+  },
+  {
+    "page": 5,
+    "text": "Nuit : 14 € × 5 h = 70 €",
+    "x": 806,
+    "y": 417,
+    "w": 300,
+    "h": 24.74
+  },
+  {
+    "page": 5,
+    "text": "Durée de la tournée de jour (h)",
+    "x": 783,
+    "y": 561,
+    "w": 430,
+    "h": 23.52
+  },
+  {
+    "page": 5,
+    "text": "La nuit n’est moins chère que si la tournée de jour dépasse 7 h, contre 5 h la nuit.",
+    "x": 72,
+    "y": 616,
+    "w": 1148,
+    "h": 30.84
+  },
+  {
+    "page": 6,
+    "text": "LIVRAISONCO",
+    "x": 56,
+    "y": 25,
+    "w": 200,
+    "h": 19.86
+  },
+  {
+    "page": 6,
+    "text": "Produit | Maquette de travail",
+    "x": 855,
+    "y": 25,
+    "w": 370,
+    "h": 19.86
+  },
+  {
+    "page": 6,
+    "text": "L’exploitation choisit le créneau ; le livreur reçoit\nune tournée validée et remonte les temps réalisés",
+    "x": 56,
+    "y": 74,
+    "w": 1168,
+    "h": 84
+  },
+  {
+    "page": 6,
+    "text": "Un site de planification avec une vue mobile ; la direction suit le coût par colis et la ponctualité.",
+    "x": 56,
+    "y": 190,
+    "w": 1168,
+    "h": 25.96
+  },
+  {
+    "page": 6,
+    "text": "Maquettes conceptuelles. Tournée et horaires illustratifs ; aucune intégration métier ni application déployée à ce stade.",
+    "x": 56,
+    "y": 656,
+    "w": 1168,
+    "h": 19
+  },
+  {
+    "page": 6,
+    "text": "Les Architectes  |  Datathon BCG X × CentraleSupélec  |  6 novembre 2026",
+    "x": 56,
+    "y": 697,
+    "w": 1000,
+    "h": 17.42
+  },
+  {
+    "page": 6,
+    "text": "6",
+    "x": 1185,
+    "y": 694,
+    "w": 40,
+    "h": 21.08
+  },
+  {
+    "page": 6,
+    "text": "Planning  /  Lundi 9 novembre",
+    "x": 74,
+    "y": 258,
+    "w": 615,
+    "h": 27.18
+  },
+  {
+    "page": 6,
+    "text": "Tournée A · Convention",
+    "x": 76,
+    "y": 310,
+    "w": 620,
+    "h": 32.06
+  },
+  {
+    "page": 6,
+    "text": "Créneau",
+    "x": 76,
+    "y": 346,
+    "w": 130,
+    "h": 23.52
+  },
+  {
+    "page": 6,
+    "text": "Lecture trafic",
+    "x": 245,
+    "y": 346,
+    "w": 215,
+    "h": 23.52
+  },
+  {
+    "page": 6,
+    "text": "Contraintes clients",
+    "x": 495,
+    "y": 346,
+    "w": 260,
+    "h": 23.52
+  },
+  {
+    "page": 6,
+    "text": "08 h – 12 h",
+    "x": 77,
+    "y": 384,
+    "w": 165,
+    "h": 25.96
+  },
+  {
+    "page": 6,
+    "text": "Option issue du modèle",
+    "x": 245,
+    "y": 384,
+    "w": 245,
+    "h": 25.96
+  },
+  {
+    "page": 6,
+    "text": "À confirmer",
+    "x": 495,
+    "y": 384,
+    "w": 235,
+    "h": 25.96
+  },
+  {
+    "page": 6,
+    "text": "12 h – 16 h",
+    "x": 77,
+    "y": 429,
+    "w": 165,
+    "h": 25.96
+  },
+  {
+    "page": 6,
+    "text": "Option à comparer",
+    "x": 245,
+    "y": 429,
+    "w": 245,
+    "h": 25.96
+  },
+  {
+    "page": 6,
+    "text": "À confirmer",
+    "x": 495,
+    "y": 429,
+    "w": 235,
+    "h": 25.96
+  },
+  {
+    "page": 6,
+    "text": "Champs-Élysées : donnée ancienne → revue manuelle",
+    "x": 76,
+    "y": 495,
+    "w": 750,
+    "h": 25.96
+  },
+  {
+    "page": 6,
+    "text": "Validation après contrôle",
+    "x": 604,
+    "y": 532,
+    "w": 225,
+    "h": 23.52
+  },
+  {
+    "page": 6,
+    "text": "MA TOURNÉE",
+    "x": 949,
+    "y": 278,
+    "w": 220,
+    "h": 19.86
+  },
+  {
+    "page": 6,
+    "text": "Tournée A",
+    "x": 949,
+    "y": 310,
+    "w": 220,
+    "h": 35.72
+  },
+  {
+    "page": 6,
+    "text": "Convention\n08 h – 12 h",
+    "x": 949,
+    "y": 352,
+    "w": 220,
+    "h": 60.12
+  },
+  {
+    "page": 6,
+    "text": "Après validation du planning",
+    "x": 949,
+    "y": 417,
+    "w": 220,
+    "h": 22.3
+  },
+  {
+    "page": 6,
+    "text": "Enregistrer l’arrivée",
+    "x": 949,
+    "y": 467,
+    "w": 220,
+    "h": 27.18
+  },
+  {
+    "page": 6,
+    "text": "Signaler un incident",
+    "x": 949,
+    "y": 511,
+    "w": 220,
+    "h": 27.18
+  },
+  {
+    "page": 6,
+    "text": "La priorité du premier outil : comparer, valider et enregistrer les durées réellement observées.",
+    "x": 72,
+    "y": 616,
+    "w": 1148,
+    "h": 30.84
+  },
+  {
+    "page": 7,
+    "text": "LIVRAISONCO",
+    "x": 56,
+    "y": 25,
+    "w": 200,
+    "h": 19.86
+  },
+  {
+    "page": 7,
+    "text": "Pilote | Protocole proposé",
+    "x": 855,
+    "y": 25,
+    "w": 370,
+    "h": 19.86
+  },
+  {
+    "page": 7,
+    "text": "Comparer au planning actuel sur des tournées équivalentes,\npuis décider sur le coût par colis et la ponctualité",
+    "x": 56,
+    "y": 74,
+    "w": 1168,
+    "h": 84
+  },
+  {
+    "page": 7,
+    "text": "Deux niveaux de validation : la qualité de prévision, puis l’effet de la décision sur l’exploitation.",
+    "x": 56,
+    "y": 190,
+    "w": 1168,
+    "h": 25.96
+  },
+  {
+    "page": 7,
+    "text": "Protocole proposé. Durée et taille d’échantillon à dimensionner à partir de la variabilité des coûts ; aucun résultat de pilote disponible.",
+    "x": 56,
+    "y": 656,
+    "w": 1168,
+    "h": 19
+  },
+  {
+    "page": 7,
+    "text": "Les Architectes  |  Datathon BCG X × CentraleSupélec  |  6 novembre 2026",
+    "x": 56,
+    "y": 697,
+    "w": 1000,
+    "h": 17.42
+  },
+  {
+    "page": 7,
+    "text": "7",
+    "x": 1185,
+    "y": 694,
+    "w": 40,
+    "h": 21.08
+  },
+  {
+    "page": 7,
+    "text": "QUESTION",
+    "x": 56,
+    "y": 247,
+    "w": 220,
+    "h": 22.3
+  },
+  {
+    "page": 7,
+    "text": "MÉTHODE",
+    "x": 293,
+    "y": 247,
+    "w": 588,
+    "h": 22.3
+  },
+  {
+    "page": 7,
+    "text": "CRITÈRE DE DÉCISION",
+    "x": 905,
+    "y": 247,
+    "w": 319,
+    "h": 22.3
+  },
+  {
+    "page": 7,
+    "text": "Le signal est-il\nutilisable ?",
+    "x": 56,
+    "y": 288,
+    "w": 220,
+    "h": 60.12
+  },
+  {
+    "page": 7,
+    "text": "Prévisions gelées avant chaque fenêtre ; cibles observées ; météo disponible à la date de prévision.",
+    "x": 293,
+    "y": 288,
+    "w": 572,
+    "h": 55.24
+  },
+  {
+    "page": 7,
+    "text": "Gain stable par rue et par horizon face à J−7.",
+    "x": 905,
+    "y": 288,
+    "w": 319,
+    "h": 55.24
+  },
+  {
+    "page": 7,
+    "text": "Le planning\ncoûte-t-il moins ?",
+    "x": 56,
+    "y": 390,
+    "w": 220,
+    "h": 60.12
+  },
+  {
+    "page": 7,
+    "text": "Dans une même zone, comparer planning actuel et assisté sur des groupes de tournées de charge comparable.",
+    "x": 293,
+    "y": 390,
+    "w": 572,
+    "h": 55.24
+  },
+  {
+    "page": 7,
+    "text": "Baisse du coût par colis livré, avec intervalle d’incertitude.",
+    "x": 905,
+    "y": 390,
+    "w": 319,
+    "h": 55.24
+  },
+  {
+    "page": 7,
+    "text": "Le gain peut-il\nêtre déployé ?",
+    "x": 56,
+    "y": 503,
+    "w": 220,
+    "h": 60.12
+  },
+  {
+    "page": 7,
+    "text": "Vérifier heures payées, retards, échecs de livraison et coût complet de la solution.",
+    "x": 293,
+    "y": 503,
+    "w": 572,
+    "h": 55.24
+  },
+  {
+    "page": 7,
+    "text": "Rentabilité positive ; ponctualité dans la tolérance fixée avant le test.",
+    "x": 905,
+    "y": 503,
+    "w": 319,
+    "h": 80.86
+  },
+  {
+    "page": 7,
+    "text": "Affecter aléatoirement les groupes si possible ; ne pas choisir les meilleures journées après le test.",
+    "x": 72,
+    "y": 626,
+    "w": 1148,
+    "h": 30.84
+  },
+  {
+    "page": 8,
+    "text": "LIVRAISONCO",
+    "x": 56,
+    "y": 25,
+    "w": 200,
+    "h": 19.86
+  },
+  {
+    "page": 8,
+    "text": "Décision et conditions de passage",
+    "x": 855,
+    "y": 25,
+    "w": 370,
+    "h": 19.86
+  },
+  {
+    "page": 8,
+    "text": "Engager le pilote sur Convention ; étendre seulement\nsi les gains couvrent les coûts de la solution",
+    "x": 56,
+    "y": 74,
+    "w": 1168,
+    "h": 84
+  },
+  {
+    "page": 8,
+    "text": "Saint-Pères sert de second cas d’usage ; Champs-Élysées reste sous supervision jusqu’au retour de données fiables.",
+    "x": 56,
+    "y": 190,
+    "w": 1168,
+    "h": 25.96
+  },
+  {
+    "page": 8,
+    "text": "Recommandation fondée sur les scores reportés. Ordre des étapes proposé ; charge, budget et calendrier à établir avec l’exploitation.",
+    "x": 56,
+    "y": 656,
+    "w": 1168,
+    "h": 19
+  },
+  {
+    "page": 8,
+    "text": "Les Architectes  |  Datathon BCG X × CentraleSupélec  |  6 novembre 2026",
+    "x": 56,
+    "y": 697,
+    "w": 1000,
+    "h": 17.42
+  },
+  {
+    "page": 8,
+    "text": "8",
+    "x": 1185,
+    "y": 694,
+    "w": 40,
+    "h": 21.08
+  },
+  {
+    "page": 8,
+    "text": "ÉTAPE",
+    "x": 56,
+    "y": 247,
+    "w": 250,
+    "h": 22.3
+  },
+  {
+    "page": 8,
+    "text": "LIVRABLE ATTENDU",
+    "x": 370,
+    "y": 247,
+    "w": 510,
+    "h": 22.3
+  },
+  {
+    "page": 8,
+    "text": "RESPONSABLE",
+    "x": 932,
+    "y": 247,
+    "w": 292,
+    "h": 22.3
+  },
+  {
+    "page": 8,
+    "text": "1. Instrumenter",
+    "x": 56,
+    "y": 291,
+    "w": 290,
+    "h": 32.06
+  },
+  {
+    "page": 8,
+    "text": "Tournées, GPS, arrêts, colis et heures payées reliés ; coût de référence calculé.",
+    "x": 370,
+    "y": 291,
+    "w": 508,
+    "h": 57.68
+  },
+  {
+    "page": 8,
+    "text": "Exploitation + Data",
+    "x": 932,
+    "y": 291,
+    "w": 292,
+    "h": 29.62
+  },
+  {
+    "page": 8,
+    "text": "2. Tester les décisions",
+    "x": 56,
+    "y": 388,
+    "w": 290,
+    "h": 32.06
+  },
+  {
+    "page": 8,
+    "text": "Durées calibrées ; comparaison des créneaux sous contraintes ; pilote avec contrôle.",
+    "x": 370,
+    "y": 388,
+    "w": 508,
+    "h": 57.68
+  },
+  {
+    "page": 8,
+    "text": "Exploitation + Data Science",
+    "x": 932,
+    "y": 388,
+    "w": 292,
+    "h": 29.62
+  },
+  {
+    "page": 8,
+    "text": "3. Décider du déploiement",
+    "x": 56,
+    "y": 499,
+    "w": 290,
+    "h": 32.06
+  },
+  {
+    "page": 8,
+    "text": "Gains nets et ponctualité estimés ; budget et règles de repli documentés.",
+    "x": 370,
+    "y": 499,
+    "w": 508,
+    "h": 57.68
+  },
+  {
+    "page": 8,
+    "text": "Sponsor opérations",
+    "x": 932,
+    "y": 499,
+    "w": 292,
+    "h": 29.62
+  },
+  {
+    "page": 8,
+    "text": "À obtenir aujourd’hui : un référent exploitation, l’accès aux données et l’accord sur le protocole.",
+    "x": 72,
+    "y": 616,
+    "w": 1148,
+    "h": 30.84
+  },
+  {
+    "page": 9,
+    "text": "LIVRAISONCO",
+    "x": 56,
+    "y": 25,
+    "w": 200,
+    "h": 19.86
+  },
+  {
+    "page": 9,
+    "text": "Annexe | Support du 5 novembre",
+    "x": 855,
+    "y": 25,
+    "w": 370,
+    "h": 19.86
+  },
+  {
+    "page": 9,
+    "text": "Sources et qualité des données",
+    "x": 56,
+    "y": 74,
+    "w": 1168,
+    "h": 44
+  },
+  {
+    "page": 9,
+    "text": "Source : LivraisonCo_CTM.pdf, p. 3. Figure ou tableau d’origine ; résultats non recalculés.",
+    "x": 56,
+    "y": 656,
+    "w": 1168,
+    "h": 19
+  },
+  {
+    "page": 9,
+    "text": "Les Architectes  |  Datathon BCG X × CentraleSupélec  |  6 novembre 2026",
+    "x": 56,
+    "y": 697,
+    "w": 1000,
+    "h": 17.42
+  },
+  {
+    "page": 9,
+    "text": "9",
+    "x": 1185,
+    "y": 694,
+    "w": 40,
+    "h": 21.08
+  },
+  {
+    "page": 10,
+    "text": "LIVRAISONCO",
+    "x": 56,
+    "y": 25,
+    "w": 200,
+    "h": 19.86
+  },
+  {
+    "page": 10,
+    "text": "Annexe | Support du 5 novembre",
+    "x": 855,
+    "y": 25,
+    "w": 370,
+    "h": 19.86
+  },
+  {
+    "page": 10,
+    "text": "Spécification du modèle",
+    "x": 56,
+    "y": 74,
+    "w": 1168,
+    "h": 44
+  },
+  {
+    "page": 10,
+    "text": "Source : LivraisonCo_CTM.pdf, p. 4. Figure ou tableau d’origine ; résultats non recalculés.",
+    "x": 56,
+    "y": 656,
+    "w": 1168,
+    "h": 19
+  },
+  {
+    "page": 10,
+    "text": "Les Architectes  |  Datathon BCG X × CentraleSupélec  |  6 novembre 2026",
+    "x": 56,
+    "y": 697,
+    "w": 1000,
+    "h": 17.42
+  },
+  {
+    "page": 10,
+    "text": "10",
+    "x": 1185,
+    "y": 694,
+    "w": 40,
+    "h": 21.08
+  },
+  {
+    "page": 11,
+    "text": "LIVRAISONCO",
+    "x": 56,
+    "y": 25,
+    "w": 200,
+    "h": 19.86
+  },
+  {
+    "page": 11,
+    "text": "Annexe | Support du 5 novembre",
+    "x": 855,
+    "y": 25,
+    "w": 370,
+    "h": 19.86
+  },
+  {
+    "page": 11,
+    "text": "Prévisions du 7 au 11 novembre : scénarios à confirmer",
+    "x": 56,
+    "y": 74,
+    "w": 1168,
+    "h": 44
+  },
+  {
+    "page": 11,
+    "text": "Source : LivraisonCo_CTM.pdf, p. 6. Créneaux exploratoires ; pont et restrictions du 11 novembre 2026 à confirmer.",
+    "x": 56,
+    "y": 656,
+    "w": 1168,
+    "h": 19
+  },
+  {
+    "page": 11,
+    "text": "Les Architectes  |  Datathon BCG X × CentraleSupélec  |  6 novembre 2026",
+    "x": 56,
+    "y": 697,
+    "w": 1000,
+    "h": 17.42
+  },
+  {
+    "page": 11,
+    "text": "11",
+    "x": 1185,
+    "y": 694,
+    "w": 40,
+    "h": 21.08
+  },
+  {
+    "page": 12,
+    "text": "LIVRAISONCO",
+    "x": 56,
+    "y": 25,
+    "w": 200,
+    "h": 19.86
+  },
+  {
+    "page": 12,
+    "text": "Annexe | Support du 5 novembre",
+    "x": 855,
+    "y": 25,
+    "w": 370,
+    "h": 19.86
+  },
+  {
+    "page": 12,
+    "text": "Réel et prédit par rue",
+    "x": 56,
+    "y": 74,
+    "w": 1168,
+    "h": 44
+  },
+  {
+    "page": 12,
+    "text": "Source : LivraisonCo_CTM.pdf, p. 9. Figure ou tableau d’origine ; résultats non recalculés.",
+    "x": 56,
+    "y": 656,
+    "w": 1168,
+    "h": 19
+  },
+  {
+    "page": 12,
+    "text": "Les Architectes  |  Datathon BCG X × CentraleSupélec  |  6 novembre 2026",
+    "x": 56,
+    "y": 697,
+    "w": 1000,
+    "h": 17.42
+  },
+  {
+    "page": 12,
+    "text": "12",
+    "x": 1185,
+    "y": 694,
+    "w": 40,
+    "h": 21.08
+  },
+  {
+    "page": 13,
+    "text": "LIVRAISONCO",
+    "x": 56,
+    "y": 25,
+    "w": 200,
+    "h": 19.86
+  },
+  {
+    "page": 13,
+    "text": "Annexe | Support du 5 novembre",
+    "x": 855,
+    "y": 25,
+    "w": 370,
+    "h": 19.86
+  },
+  {
+    "page": 13,
+    "text": "Profils horaires",
+    "x": 56,
+    "y": 74,
+    "w": 1168,
+    "h": 44
+  },
+  {
+    "page": 13,
+    "text": "Source : LivraisonCo_CTM.pdf, p. 10. Figure ou tableau d’origine ; résultats non recalculés.",
+    "x": 56,
+    "y": 656,
+    "w": 1168,
+    "h": 19
+  },
+  {
+    "page": 13,
+    "text": "Les Architectes  |  Datathon BCG X × CentraleSupélec  |  6 novembre 2026",
+    "x": 56,
+    "y": 697,
+    "w": 1000,
+    "h": 17.42
+  },
+  {
+    "page": 13,
+    "text": "13",
+    "x": 1185,
+    "y": 694,
+    "w": 40,
+    "h": 21.08
+  },
+  {
+    "page": 14,
+    "text": "LIVRAISONCO",
+    "x": 56,
+    "y": 25,
+    "w": 200,
+    "h": 19.86
+  },
+  {
+    "page": 14,
+    "text": "Annexe | Support du 5 novembre",
+    "x": 855,
+    "y": 25,
+    "w": 370,
+    "h": 19.86
+  },
+  {
+    "page": 14,
+    "text": "Relation entre débit et occupation",
+    "x": 56,
+    "y": 74,
+    "w": 1168,
+    "h": 44
+  },
+  {
+    "page": 14,
+    "text": "Source : LivraisonCo_CTM.pdf, p. 11. Figure ou tableau d’origine ; résultats non recalculés.",
+    "x": 56,
+    "y": 656,
+    "w": 1168,
+    "h": 19
+  },
+  {
+    "page": 14,
+    "text": "Les Architectes  |  Datathon BCG X × CentraleSupélec  |  6 novembre 2026",
+    "x": 56,
+    "y": 697,
+    "w": 1000,
+    "h": 17.42
+  },
+  {
+    "page": 14,
+    "text": "14",
+    "x": 1185,
+    "y": 694,
+    "w": 40,
+    "h": 21.08
+  },
+  {
+    "page": 15,
+    "text": "LIVRAISONCO",
+    "x": 56,
+    "y": 25,
+    "w": 200,
+    "h": 19.86
+  },
+  {
+    "page": 15,
+    "text": "Annexe | Support du 5 novembre",
+    "x": 855,
+    "y": 25,
+    "w": 370,
+    "h": 19.86
+  },
+  {
+    "page": 15,
+    "text": "Importance des variables",
+    "x": 56,
+    "y": 74,
+    "w": 1168,
+    "h": 44
+  },
+  {
+    "page": 15,
+    "text": "Source : LivraisonCo_CTM.pdf, p. 12. Figure ou tableau d’origine ; résultats non recalculés.",
+    "x": 56,
+    "y": 656,
+    "w": 1168,
+    "h": 19
+  },
+  {
+    "page": 15,
+    "text": "Les Architectes  |  Datathon BCG X × CentraleSupélec  |  6 novembre 2026",
+    "x": 56,
+    "y": 697,
+    "w": 1000,
+    "h": 17.42
+  },
+  {
+    "page": 15,
+    "text": "15",
+    "x": 1185,
+    "y": 694,
+    "w": 40,
+    "h": 21.08
+  },
+  {
+    "page": 16,
+    "text": "LIVRAISONCO",
+    "x": 56,
+    "y": 25,
+    "w": 200,
+    "h": 19.86
+  },
+  {
+    "page": 16,
+    "text": "Annexe | Support du 5 novembre",
+    "x": 855,
+    "y": 25,
+    "w": 370,
+    "h": 19.86
+  },
+  {
+    "page": 16,
+    "text": "Tableau complet des scores",
+    "x": 56,
+    "y": 74,
+    "w": 1168,
+    "h": 44
+  },
+  {
+    "page": 16,
+    "text": "Source : LivraisonCo_CTM.pdf, p. 13. Figure ou tableau d’origine ; résultats non recalculés.",
+    "x": 56,
+    "y": 656,
+    "w": 1168,
+    "h": 19
+  },
+  {
+    "page": 16,
+    "text": "Les Architectes  |  Datathon BCG X × CentraleSupélec  |  6 novembre 2026",
+    "x": 56,
+    "y": 697,
+    "w": 1000,
+    "h": 17.42
+  },
+  {
+    "page": 16,
+    "text": "16",
+    "x": 1185,
+    "y": 694,
+    "w": 40,
+    "h": 21.08
+  },
+  {
+    "page": 17,
+    "text": "LIVRAISONCO",
+    "x": 56,
+    "y": 25,
+    "w": 200,
+    "h": 19.86
+  },
+  {
+    "page": 17,
+    "text": "Annexe | Support du 5 novembre",
+    "x": 855,
+    "y": 25,
+    "w": 370,
+    "h": 19.86
+  },
+  {
+    "page": 17,
+    "text": "Liste des 48 variables",
+    "x": 56,
+    "y": 74,
+    "w": 1168,
+    "h": 44
+  },
+  {
+    "page": 17,
+    "text": "Source : LivraisonCo_CTM.pdf, p. 14. Figure ou tableau d’origine ; résultats non recalculés.",
+    "x": 56,
+    "y": 656,
+    "w": 1168,
+    "h": 19
+  },
+  {
+    "page": 17,
+    "text": "Les Architectes  |  Datathon BCG X × CentraleSupélec  |  6 novembre 2026",
+    "x": 56,
+    "y": 697,
+    "w": 1000,
+    "h": 17.42
+  },
+  {
+    "page": 17,
+    "text": "17",
+    "x": 1185,
+    "y": 694,
+    "w": 40,
+    "h": 21.08
+  }
+]

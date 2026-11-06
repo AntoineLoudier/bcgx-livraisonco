@@ -1,0 +1,31 @@
+[project]
+name = "bcgx-livraisonco"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Amin Belfkira", email = "amin@belfkira.fr" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "catboost>=1.2.8",
+    "jupyter>=1.1.1",
+    "lightgbm>=4.7.0",
+    "matplotlib>=3.11.2",
+    "numpy>=2.5.4",
+    "pandas>=3.1.0",
+    "pyarrow>=26.0.0",
+    "requests>=2.34.2",
+    "scikit-learn>=1.9.1",
+    "seaborn>=0.13.2",
+    "shap>=0.54.1",
+    "workalendar>=17.0.0",
+    "xgboost>=3.4.1",
+]
+
+[project.scripts]
+bcgx-livraisonco = "bcgx_livraisonco:main"
+
+[build-system]
+requires = ["uv_build>=0.12.7,<0.13.0"]
+build-backend = "uv_build"

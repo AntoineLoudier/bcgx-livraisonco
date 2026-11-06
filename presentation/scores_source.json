@@ -1,0 +1,30 @@
+{
+  "source": "LivraisonCo_CTM.pdf (support initial non distribué), page 13",
+  "statut": "Transcription des résultats du support ; pas de nouveau calcul de backtest",
+  "unites": {
+    "q": "RMSE en véhicules/heure",
+    "k": "RMSE en points de pourcentage"
+  },
+  "scores": [
+    {
+      "rue": "Convention",
+      "q_j7": 79.1,
+      "q_ancrage": 74.3,
+      "q_final": 62.5,
+      "gain_q": 21.0,
+      "k_j7": 2.81,
+      "k_final": 2.11,
+      "gain_k": 24.9
+    },
+    {
+      "rue": "Saint-Pères",
+      "q_j7": 83.2,
+      "q_ancrage": 91.4,
+      "q_final": 80.4,
+      "gain_q": 3.3,
+      "k_j7": 2.6,
+      "k_final": 2.22,
+      "gain_k": 14.8
+    }
+  ]
+}
