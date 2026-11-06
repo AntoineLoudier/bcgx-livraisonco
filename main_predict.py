@@ -10,8 +10,7 @@ from main_train import main as run_training
 
 PROCESSED_DATA_DIR = os.path.join("data", "processed")
 
-# Remplacez par le nom exact de votre groupe envoyé à Mandy Huart (Slide 13 & 15)
-DEFAULT_GROUP_NAME = "mon_groupe_bcgx"
+DEFAULT_GROUP_NAME = "Les Architectes"
 
 
 def generate_final_submission(group_name: str, output_dir: str = ".") -> None:
