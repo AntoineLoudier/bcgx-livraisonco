@@ -8,26 +8,26 @@ from xgboost import XGBRegressor
 MODELS_DIR = "models"
 
 FEATURE_COLS = [
-    # Calendrier & Cyclique
+    # Calendrier & Cyclique (is_summer_holiday exclu pour éviter le sur-ajustement sur l'unique été 2026)
     "hour", "dayofweek", "month",
     "hour_sin", "hour_cos", "dow_sin", "dow_cos",
     "is_weekend", "is_public_holiday", "bridge_intensity", "is_bridge_day",
-    "is_school_holiday","is_summer_holiday", "day_regime",
+    "is_school_holiday", "day_regime",
     # Fermetures & Événements
     "is_road_closed", "is_paris_respire", "is_armistice", "is_armistice_parade_hours",
     # Météo & Interactions
     "temperature_2m", "precipitation", "rain", "wind_speed_10m",
     "is_rush_hour", "is_raining", "rain_in_rush_hour", "temp_diff_24h",
     # Lags Débit (q)
-    "q_lag_168h", "q_lag_336h", "q_lag_504h","q_lag_672h",
-    "q_weekly_mean_3w", "q_weekly_std_3w", "q_regime_hist_mean", "q_smart_expected",
+    "q_lag_168h", "q_lag_336h", "q_lag_504h", "q_lag_672h",
+    "q_weekly_mean_3w", "q_weekly_median_4w", "q_weekly_std_3w", "q_regime_hist_mean", "q_smart_expected",
     # Lags Taux d'occupation (k)
-    "k_lag_168h", "k_lag_336h", "k_lag_504h","k_lag_672h",
-    "k_weekly_mean_3w", "k_weekly_std_3w", "k_regime_hist_mean", "k_smart_expected",
+    "k_lag_168h", "k_lag_336h", "k_lag_504h", "k_lag_672h",
+    "k_weekly_mean_3w", "k_weekly_median_4w", "k_weekly_std_3w", "k_regime_hist_mean", "k_smart_expected",
     # Variables physiques croisées et pentes horaires (ajoutées à la volée)
     "congestion_index_168h", "q_hour_slope_168h", "k_hour_slope_168h",
     "holiday_x_rush",
-    "q_hour_p90","k_hour_p90"
+    "q_hour_p90", "k_hour_p90",
 ]
 
 
@@ -36,12 +36,21 @@ def add_cross_physical_features(df: pd.DataFrame) -> pd.DataFrame:
     Ajoute :
     1. L'indice de congestion k/q
     2. La pente horaire (accélération du trafic entre h-1 et h à J-7)
-    3. L'interaction Vacances scolaires x Heure de pointe
+    3. La médiane robuste sur 4 semaines (J-7 à J-28), insensible aux anomalies isolées sur Saint-Pères
+    4. L'interaction Vacances scolaires x Heure de pointe
     """
     df = df.copy()
     df["congestion_index_168h"] = df["k_lag_168h"] / (df["q_lag_168h"] + 10.0)
     df["q_hour_slope_168h"] = df.groupby("arc")["q_lag_168h"].diff(1).fillna(0.0)
     df["k_hour_slope_168h"] = df.groupby("arc")["k_lag_168h"].diff(1).fillna(0.0)
+    df["q_weekly_median_4w"] = (
+        pd.concat([df["q_lag_168h"], df["q_lag_336h"], df["q_lag_504h"], df["q_lag_672h"]], axis=1)
+        .median(axis=1)
+    )
+    df["k_weekly_median_4w"] = (
+        pd.concat([df["k_lag_168h"], df["k_lag_336h"], df["k_lag_504h"], df["k_lag_672h"]], axis=1)
+        .median(axis=1)
+    )
     df["holiday_x_rush"] = df["is_school_holiday"] * df["is_rush_hour"]
     return df
 
@@ -75,13 +84,34 @@ class ResidualEnsembleModel:
         self.q_min = 0.0
         self.q_max = 8000.0 if target == "q" else 100.0
 
-        # Champs-Élysées n'a que ~1143 heures réelles : on bride la profondeur pour éviter tout overfit !
-        is_small_sample = (arc == "Champs-Elysées")
-        n_est = 120 if is_small_sample else 400
-        depth_lgb = 3 if is_small_sample else 5
-        leaves_lgb = 9 if is_small_sample else 23
-        depth_xgb = 3 if is_small_sample else 4
-        min_child = 35 if is_small_sample else 20
+        # Paramétrage différencié et régularisation adaptée par typologie d'axe (Configuration Antigravité) :
+        # - Champs-Élysées : faible historique réel (~1143h), modèle fortement contraint.
+        # - Saint-Pères : axe urbain étroit et bruité ; profondeur réduite et shrinkage résiduel (0.40 / 0.85).
+        # - Convention : grand axe pendulaire structuré ; capacité nominale complète (1.05 / 1.00).
+        if arc == "Champs-Elysées":
+            n_est = 120
+            depth_lgb = 3
+            leaves_lgb = 9
+            depth_xgb = 3
+            min_child = 35
+            reg_l2 = 4.0
+            self.residual_weight = 0.80
+        elif arc == "Saint-Pères":
+            n_est = 350
+            depth_lgb = 4
+            leaves_lgb = 14
+            depth_xgb = 3
+            min_child = 25
+            reg_l2 = 5.0
+            self.residual_weight = 0.40 if target == "q" else 0.85
+        else:  # Convention
+            n_est = 400
+            depth_lgb = 5
+            leaves_lgb = 23
+            depth_xgb = 4
+            min_child = 20
+            reg_l2 = 4.0
+            self.residual_weight = 1.05 if target == "q" else 1.00
 
         self.lgbm = LGBMRegressor(
             objective="regression",
@@ -94,7 +124,7 @@ class ResidualEnsembleModel:
             subsample=0.8,
             colsample_bytree=0.8,
             reg_alpha=2.0,
-            reg_lambda=4.0,
+            reg_lambda=reg_l2,
             random_state=42,
             verbose=-1,
         )
@@ -109,7 +139,7 @@ class ResidualEnsembleModel:
             subsample=0.8,
             colsample_bytree=0.8,
             reg_alpha=2.0,
-            reg_lambda=4.0,
+            reg_lambda=reg_l2,
             random_state=42,
             n_jobs=-1,
         )
@@ -143,6 +173,11 @@ class ResidualEnsembleModel:
         res_clean = residual[valid_mask]
         w_clean = weights[valid_mask]
 
+        # Écrêtage robuste (Winsorizing 1% - 99%) des résidus d'entraînement sur Saint-Pères et Convention
+        if self.arc in ["Saint-Pères", "Convention"] and len(res_clean) > 100:
+            low_q, high_q = np.percentile(res_clean, [1.0, 99.0])
+            res_clean = np.clip(res_clean, low_q, high_q)
+
         self.lgbm.fit(X_clean, res_clean, sample_weight=w_clean)
         self.xgb.fit(X_clean, res_clean, sample_weight=w_clean)
         return self
@@ -154,7 +189,7 @@ class ResidualEnsembleModel:
 
         pred_res_lgb = self.lgbm.predict(X)
         pred_res_xgb = self.xgb.predict(X)
-        pred_residual = 0.5 * pred_res_lgb + 0.5 * pred_res_xgb
+        pred_residual = (0.5 * pred_res_lgb + 0.5 * pred_res_xgb) * self.residual_weight
 
         is_parade = df_prep["is_armistice_parade_hours"].to_numpy() == 1
         pred_residual = np.where(is_parade, 0.15 * pred_residual, pred_residual)
