@@ -38,6 +38,7 @@ def generate_final_submission(group_name: str, output_dir: str = ".") -> None:
     print(output_df.groupby("arc")[["debit_horaire", "taux_occupation"]].mean().round(2))
 
     # Validation stricte et export via la fonction officielle BCG X (Slide 13)
+    os.makedirs(output_dir, exist_ok=True)
     test_format_and_export_output(
         output_df=output_df,
         output_directory=output_dir,
@@ -48,6 +49,11 @@ def generate_final_submission(group_name: str, output_dir: str = ".") -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Génération du livrable CSV officiel BCG X (7-11 nov)")
+    parser.add_argument(
+        "--output-dir",
+        default="reports",
+        help="Dossier des prédictions générées (reports par défaut).",
+    )
     parser.add_argument(
         "--group",
         type=str,
@@ -69,4 +75,4 @@ if __name__ == "__main__":
         run_feature_pipeline()
         run_training()
 
-    generate_final_submission(group_name=args.group, output_dir=".")
+    generate_final_submission(group_name=args.group, output_dir=args.output_dir)

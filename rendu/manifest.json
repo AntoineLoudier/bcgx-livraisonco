@@ -1,0 +1,29 @@
+{
+  "group": "Les Architectes",
+  "data_acquisition_date": "2026-11-06",
+  "forecast_start": "2026-11-07T00:00:00",
+  "forecast_end": "2026-11-11T23:00:00",
+  "timezone": "Europe/Paris",
+  "model_revision": "c00b66133b273504329247b86f0ff398293c96ae",
+  "evaluated_streets": [
+    "Convention",
+    "Saint-Pères"
+  ],
+  "exported_rows": 360,
+  "evaluated_rows": 240,
+  "presentation_slides": 19,
+  "export_contract": "Format du validateur initial : trois rues, dont Champs-Elysées hors évaluation ; index CSV et séparateur point-virgule conservés.",
+  "files_sha256": {
+    "rendu/output_Les Architectes.csv": "aeaed23f0f80543372efcc449e6940203bb0cb809d0e6a59a083619267849185",
+    "presentation/LivraisonCo.pdf": "286976bf1dae4793f5170f5a60cc6fcf54a4a8b59ce1ef39f15f310296eaa6fb",
+    "presentation/LivraisonCo.pptx": "ca9286d3f23f662584f67dcdbf30186d73c53cd3e355170c686654d88c313d59",
+    "presentation/scores_source.json": "b275bc7b997140b6605de04dbddf294a4b1c9270cec63134127f0506accd3f3b",
+    "presentation/results/comparaison_versions.csv": "140162861757fb06e24e0af0fa9375d0ba5778953ad0cafdfd53baa18d0e1141",
+    "presentation/results/importance_variables.csv": "0c81d3435239dc171c4d5d5bcce14fcac76b163b0855da66a03988719c0964dc",
+    "presentation/results/manifest.json": "a7a8021e3e9d3edf9ed82f2a2d8c6383dd3c3c937b1877f9a3d4b16c81f0dd85",
+    "presentation/results/predictions_validation_2_rues.csv": "3a6d54296ba60f621dec56f7dc49008764943bff9ad1429d9b38566923e1afc5",
+    "presentation/results/previsions_7_11_novembre_2_rues.csv": "345067e89c18a14196e1c85599a1e8af6b7af19b24679399fd734122d2f89392",
+    "presentation/results/scores_2_rues.csv": "4dbd0ea087e9cd22bfa60be35b9bb75c64d0b7103e4c1bca8a3163d1e5448d84",
+    "presentation/results/scores_par_fenetre.csv": "953ae48ef3ea25083aacaa878669379764904163de8e00deb7dd6a92fe6d4758"
+  }
+}

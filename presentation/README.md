@@ -1,72 +1,95 @@
-# LivraisonCo — Revue des résultats et décision de pilote
+# LivraisonCo — Présentation actualisée après acquisition du 6 novembre
 
-La présentation a été réécrite en huit slides principales, avec neuf annexes techniques. La version précédente est conservée dans `archive_v1.zip`.
+Le support contient **8 slides principales et 11 annexes**. Les chiffres et figures sont recalculés avec `main` à la révision `c00b661`, après réacquisition du trafic et de la météo. **Convention et Saint-Pères sont les seules rues évaluées**, conformément à la précision reçue. Les Champs-Élysées sont exclus de tous les tableaux de résultat, agrégats et graphiques du support.
 
-- **LivraisonCo_synthese.pdf** : les huit slides pour l’oral.
-- **LivraisonCo_business.pdf** : le même récit, suivi des annexes.
-- **LivraisonCo_business.pptx** : version modifiable, avec notes orateur.
-- **notes_orateur.md** : notes et explications des calculs, consultables séparément.
+- `LivraisonCo.pdf` : présentation complète avec annexes.
+- `LivraisonCo.pptx` : PowerPoint avec notes orateur.
+- `notes_orateur.md` : notes et définitions détaillées.
 
-Les graphiques et maquettes des huit slides principales sont composés d’objets PowerPoint éditables. Les neuf annexes reprennent des images du PDF d’origine ; leurs chiffres et figures internes ne sont pas éditables. Le PDF original `LivraisonCo_CTM.pdf` est exclu du dépôt ; les extraits nécessaires sont conservés dans `assets/`.
+La maquette validée `assets/maquette_exploitation_livreur.png` est intégrée en slide 6. Le fichier image reste inchangé ; la mise en page masque seulement les marges extérieures et le titre de la planche. Ses horaires, courbe et carte sont fictifs. La ligne Champs-Élysées reste visible dans cette illustration approuvée, sans contribuer à l’évaluation.
 
-## Choix de fond et de forme
+Les slides principales utilisent des objets PowerPoint éditables, sauf la maquette. Les graphiques scientifiques des annexes sont des images régénérées à partir des données et modèles actuels ; les tableaux d’annexe restent éditables. Le rendu ne conserve qu’une version du support, complète avec ses annexes. Les anciennes versions et planches sources restent accessibles dans l’historique Git.
 
-Le support utilise des titres qui énoncent une conclusion, des comparaisons sur une même échelle, une analyse de sensibilité et des tableaux de décision. La présentation évite les slogans, les grandes cartes répétées et les chiffres de gains détachés de leurs hypothèses.
+## Résultats actualisés
 
-Le fil de présentation est le suivant :
+La nouvelle acquisition contient des mesures réelles jusqu’au **6 novembre 2026 à 00 h, heure de Paris**, sur les deux rues. La validation utilise quatre fenêtres de cinq jours par rue et uniquement des cibles réellement observées : **464 heures pour Convention, 480 pour Saint-Pères, 944 au total par cible**.
 
-1. Tester la réduction des heures de livraison, en commençant sur Convention.
-2. Expliquer l’économie avec les heures réellement récupérables et un seuil de rentabilité.
-3. Montrer les performances par rue et la contribution de l’ancrage puis de la correction.
-4. Expliquer le modèle en une slide.
-5. Identifier le travail manquant entre trafic prévu et coût de tournée.
-6. Présenter le rôle de l’exploitation et du livreur dans un outil concret.
-7. Proposer un protocole prospectif comparant au planning actuel.
-8. Demander les données, le référent métier et l’accord sur le pilote.
+| Rue | RMSE q, référence → modèle (véh/h) | Baisse q | RMSE k, référence → modèle (points de %) | Baisse k |
+|---|---:|---:|---:|---:|
+| Convention | 71,19 → 56,97 | 19,97 % | 2,77 → 2,05 | 25,90 % |
+| Saint-Pères | 79,61 → 75,85 | 4,73 % | 2,86 → 2,34 | 18,17 % |
+| Ensemble des deux rues | 75,59 → 67,23 | 11,05 % | 2,81 → 2,20 | 21,75 % |
 
-La partie modèle est conservée en détail dans les annexes. Les prévisions du 7–11 novembre sont également conservées, avec une mention explicite du statut exploratoire des créneaux et restrictions.
+La référence du pipeline est **J−7 prétraité** : lissage de phase et remplacement des jours spéciaux. Elle ne correspond pas à une mesure brute de la même heure sept jours auparavant. Le fichier `results/scores_2_rues.csv` fournit aussi une référence J−7 non lissée calculée sur la série nettoyée/imputée, sur les mêmes cibles. Tous les gains sont des baisses de RMSE, pas des taux d’accuracy ni des économies.
 
-## Provenance et portée des résultats
+Le global est calculé sur les erreurs des deux rues concaténées ; il ne résulte pas d’une moyenne de pourcentages ou de RMSE.
 
-Les scores sont transcrits de **la page 13 du PDF fourni** ; ils sont centralisés dans `scores_source.json`. Aucun entraînement ni nouveau backtest n’a été exécuté pour cette adaptation.
+## Progrès par rapport à l’ancienne version
 
-Les gains sur q sont de 21,0 % sur Convention et 3,3 % sur Saint-Pères. Sur k, ils sont de 24,9 % et 14,8 %. Ce sont des réductions de RMSE face à J−7, pas des taux d’accuracy ni des économies. Les pourcentages publiés sont repris tels quels : les valeurs arrondies des RMSE ne permettent pas toujours de les reconstruire exactement.
+L’ancienne implémentation (`e6c9818`) a été réentraînée sur **les mêmes données actualisées, historiques d’entraînement et fenêtres** que la nouvelle (`c00b661`). On ne compare pas directement les anciens chiffres du PDF aux nouvelles fenêtres.
 
-Les barres de débit partagent une échelle commençant à zéro. Elles montrent que, sur Saint-Pères, l’ancrage seul est moins bon que J−7 ; la correction rattrape d’abord cette faiblesse. Le score global est conservé en annexe, car il mélange notamment les mesures 2025 des Champs-Élysées et les périodes 2026 des autres rues.
+| Rue | Baisse de RMSE q | Baisse de RMSE k |
+|---|---:|---:|
+| Convention | 0,68 % | 4,02 % |
+| Saint-Pères | 6,36 % | 1,10 % |
+| Ensemble des deux rues | **4,47 %** | **2,38 %** |
 
-La validation Champs-Élysées ne démontre pas la performance de novembre 2026. Le dépôt local consulté était sur `main` et ne contenait pas les artefacts associés au support : cette adaptation ne constitue pas un nouvel audit de causalité. La disponibilité historique des prévisions météo et l’évaluation sur des cibles réelles sont à confirmer dans ces artefacts.
+Source : `results/comparaison_versions.csv`. Ces gains sont agrégés ; certaines fenêtres restent moins bonnes que la référence ou l’ancienne version. Le pli d’août sur Saint-Pères perd face à J−7 prétraité sur q et k. Les dates exactes, effectifs et scores sont dans `results/scores_par_fenetre.csv`. `Start` et `End` désignent les premières et dernières **cibles observées** ; les fenêtres nominales durent 120 heures, même si des observations manquent en bordure.
 
-Les horaires de fermeture évoqués dans le support initial n’ont pas été vérifiés pour 2026. Dans l’annexe de prévisions, ils doivent être lus comme les hypothèses de ce support, à confirmer avant toute décision opérationnelle.
+## Portée et limites
 
-## Économie : hypothèses et calculs
+- Il s’agit du **backtest de développement** existant, pas d’un nouveau test indépendant de la sélection des modèles et paramètres.
+- Le trafic et la météo ont bien été retéléchargés. La météo couvre les 120 heures du 7–11 novembre sans valeur manquante.
+- Les fenêtres de validation utilisent néanmoins la **météo historique observée**, et non une archive de prévisions émises à chaque date passée. Les résultats ne certifient donc pas la performance opérationnelle avec prévisions météo et délais réels de publication.
+- Le nouveau modèle utilise 49 variables : ajout des médianes hebdomadaires q/k, retrait de `is_summer_holiday`, stabilisation des lags, écrêtage des résidus et poids de correction adaptés à la rue/cible.
+- Les règles de pont et de férié restent des hypothèses de modèle. Pour les deux rues évaluées, le férié multiplie l’ancrage par 0,80 ; le profil de défilé des Champs-Élysées ne s’applique pas à ces deux rues.
+- L’export technique officiel conserve ses trois rues et ses 360 lignes. Le support analyse uniquement les **240 lignes des deux rues évaluées**, avec q et k dans chaque ligne. Aucun score des Champs-Élysées ne contribue au global affiché.
 
-Les scénarios sont **des simulations, pas des gains constatés ni des prévisions de rentabilité**. Les taux de 10 €/h le jour et 14 €/h la nuit viennent du cas. La base de 100 heures payées par jour, les 250 jours par an, la part de conduite et les gains de durée/récupération sont illustratifs.
+## Fichiers de preuve
 
-```text
-Base annuelle = 100 h/jour × 10 €/h × 250 jours = 250 000 €
-Part conduite = 40 % = 40 h/jour
-Temps libéré dans le scénario repère = 40 × 20 % = 8 h/jour
-Heures effectivement évitées = 8 × 70 % = 5,6 h/jour
-Économie brute = 5,6 × 10 × 250 = 14 000 €/an
-```
+Les fichiers dans `results/` sont conservés avec la présentation pour rendre les chiffres vérifiables, même si `reports/` et les données brutes sont ignorés par Git :
 
-La matrice fait varier séparément la réduction du temps de conduite (10/20/30 %) et la part récupérable (30/50/70 %), à part conduite constante. Aucune probabilité n’est associée à ces scénarios. Le coût horaire utilisé n’est pas nécessairement le coût employeur complet.
+- `manifest.json` : commits, empreintes SHA-256 des entrées et du code, versions des bibliothèques, dates d’acquisition, périmètre, variables et limites.
+- `scores_2_rues.csv` : scores complets et les deux définitions de référence hebdomadaire.
+- `comparaison_versions.csv` : comparaison contrôlée ancienne/nouvelle version.
+- `scores_par_fenetre.csv` : périodes observées, effectifs et scores par pli.
+- `predictions_validation_2_rues.csv` : cibles, prédictions des deux versions, références et indicateurs d’observation, pour recalculer les scores.
+- `previsions_7_11_novembre_2_rues.csv` : les 240 prévisions horaires actuelles.
+- `importance_variables.csv` : importances et SHAP du pipeline courant.
 
-La version précédente inventait 6 k€ initiaux et 4 k€/an récurrents pour illustrer le gain net. **Ces montants sont retirés de la version actuelle.** Le coût de la solution reste à chiffrer. Les 14 k€ constituent uniquement le plafond de coût en année 1 à l’équilibre dans le scénario repère, en supposant une année complète de gain ; ni budget recommandé, ni devis. La montée en charge et les coûts complets modifieraient ce seuil.
+Le graphique SHAP affiche la composante LightGBM après multiplication par 0,5 et par le poids résiduel de la rue/cible, avant clipping final. Il ne couvre ni XGBoost, ni l’ancrage, ni le post-traitement non linéaire. L’échantillon est constitué des dernières lignes d’entraînement, pas d’un jeu de test indépendant.
 
-À effectif et heures payées constants, le temps gagné représente de la capacité et ne réduit pas automatiquement les dépenses. Aucun lien empirique entre baisse de RMSE et baisse du temps de conduite n’est estimé.
+## Régénération
 
-Le graphique jour/nuit utilise une tournée de nuit de 5 h à 14 €/h et une durée de jour variable à 10 €/h. Les coûts sont égaux pour 7 h le jour ; la nuit est moins chère au-delà, à travail et autres coûts identiques. Ce graphique est calculé, il ne provient pas de trajets GPS.
-
-## Régénération et vérification
+Pour régénérer seulement le PDF et le PowerPoint à partir des résultats déjà conservés :
 
 ```bash
-uv pip install --python .venv/bin/python python-pptx reportlab pymupdf
+uv sync --locked --extra presentation
 .venv/bin/python presentation/build_presentation.py
 ```
 
-Le générateur écrit les PDF, le PowerPoint, les notes, `hypotheses_business.json`, `scenarios_business.csv`, `scores_source.json` et `layout_bounds.json`. Les fichiers JSON/CSV sont des sorties, pas les entrées du script. Pour faire évoluer les paramètres, modifier le bloc `assumptions` et les légendes narratives correspondantes dans le script. Les calculs et les cellules se recalculent ; certaines formulations explicatives restent écrites pour le scénario actuel.
+Pour actualiser les données et les résultats à nouveau, depuis la racine :
 
-La régénération utilise les figures de `assets/` et fonctionne sans le PDF original. Si celui-ci est fourni temporairement à la racine, le script peut en réextraire les figures. Les chemins de la version archivée ne sont pas maintenus : utiliser le générateur courant.
+```bash
+.venv/bin/python src/data_loader.py
+.venv/bin/python src/preprocessing.py
+.venv/bin/python src/features.py
+.venv/bin/python main_train.py
+.venv/bin/python main_predict.py
+.venv/bin/python presentation/refresh_evidence.py
+.venv/bin/python presentation/build_presentation.py
+```
 
-Le PDF utilise Arimo, compatible en métriques avec Arial ; le PowerPoint demande Arial. Les fontes ne sont pas intégrées au PowerPoint. Le PDF a été rendu et inspecté visuellement, les coordonnées et calculs vérifiés. Le rendu dans Microsoft PowerPoint n’a pas été contrôlé ici.
+`refresh_evidence.py` vérifie que les artefacts d’entraînement sont plus récents que les données et le code. Il réentraîne la version de comparaison à partir de Git, sur les mêmes fenêtres, puis recalcule les agrégats à deux rues et les figures. Il limite son calcul à quatre cœurs lorsque l’affinité CPU est disponible. L’historique Git contenant `e6c9818` est nécessaire pour cette comparaison.
+
+La vérification `python3 scripts/verify_submission.py`, depuis la racine, contrôle aussi la concordance avec le CSV final de `rendu/`.
+
+Le rendu lit `scores_source.json` et `results/` ; il ne remplace plus les résultats par les anciens chiffres écrits dans le script. Les paramètres de mise en page et certaines conclusions narratives correspondent au calcul du 6 novembre : les relire après un nouveau rafraîchissement.
+
+Le PDF fourni utilise Arimo (compatible en métriques avec Arial) et le PowerPoint demande Arial. Pour régénérer avec la même police sous Linux, installer les polices Croscore (`fonts-croscore` sous Debian/Ubuntu) ; à défaut, le script utilise DejaVu Sans fourni avec Matplotlib, ce qui peut modifier les retours à la ligne. Les polices ne sont pas intégrées au PowerPoint. Les PDF sont inspectés visuellement ; le rendu dans Microsoft PowerPoint n’est pas contrôlé ici.
+
+## Économie et maquette
+
+Les hypothèses économiques sont inchangées : 100 heures payées/jour, 40 % de conduite, 20 % de conduite en moins, 70 % de ce temps récupérable, 10 €/h et 250 jours/an. Cela donne 5,6 h/jour, soit 14 k€/an bruts **dans le scénario**, pas un gain réalisé par le modèle. Les 14 k€ sont un seuil de coût de solution à l’équilibre dans cette simulation ; aucun devis n’a été produit.
+
+À heures payées constantes, le temps libéré représente de la capacité. Aucun lien empirique entre baisse de RMSE et gain de temps n’a été estimé. La maquette illustre le parcours exploitation → livreur et ne constitue pas une application fonctionnelle.

@@ -1,0 +1,128 @@
+{
+  "generated_at_utc": "2026-11-06T16:40:45.281377+00:00",
+  "model_revision": "c00b66133b273504329247b86f0ff398293c96ae",
+  "comparison_revision": "e6c9818234eb18e90850f3825774852218792d72",
+  "evaluated_streets": [
+    "Convention",
+    "Saint-Pères"
+  ],
+  "excluded_street": "Champs-Elysées",
+  "scope_source": "Précision utilisateur : Champs-Élysées ne fait pas partie de l’évaluation.",
+  "acquisition_utc": {
+    "data/raw/traffic_raw.csv": "2026-11-06T16:37:31.624701+00:00",
+    "data/raw/weather_raw.csv": "2026-11-06T16:37:32.168701+00:00"
+  },
+  "inputs_sha256": {
+    "data/raw/traffic_raw.csv": "bbc41a22d64325fefbf89d14e393af036045847e9ff37d06705afcdcdfcd0f7f",
+    "data/raw/weather_raw.csv": "6b6fdb0f5ce6c6f0d7dfd5fa8e93c579fc7bdfc44952116df0590934fec1f9b7",
+    "data/processed/traffic_clean.csv": "857083ed0887a9e4194068b510a8d295c730f1fc8034e4f600bffcad24b9bc75",
+    "data/processed/features_train.csv": "793f2dc9fa3c43d4dcfaf148c60e95e50217ff2da19f577ec7025c3afd1e9570",
+    "data/processed/cv_predictions_oof.csv": "2753f41fc63b9bc6e51498e27b6460d17560ec53e56f3aec20525918819bf946",
+    "src/model.py": "b255d9834da029a7c8d024fe8ee866c8165d2f623425beb4d3d7d651ffb9bd35",
+    "src/features.py": "e0d5f107081b8db476c93151d93a75c681fabc166a6c2a3935c67201fa118350",
+    "src/preprocessing.py": "2b3af03350271ac616ed611d2a981f7d0f1f52dc9074297b806d7b9a774d0492",
+    "src/evaluate.py": "a2772a7c89c5d5502e676c6c736f8e316de4f245f21d5d8f4f040b5655300679",
+    "main_train.py": "4516ca725ac46a7271297fa140b9e97ceb630c4ccdb3c7b1d45ad2665ae44ac1"
+  },
+  "versions": {
+    "numpy": "2.5.4",
+    "pandas": "3.1.0",
+    "lightgbm": "4.7.0",
+    "xgboost": "3.4.1",
+    "scikit-learn": "1.9.1"
+  },
+  "feature_count": 49,
+  "feature_columns": [
+    "hour",
+    "dayofweek",
+    "month",
+    "hour_sin",
+    "hour_cos",
+    "dow_sin",
+    "dow_cos",
+    "is_weekend",
+    "is_public_holiday",
+    "bridge_intensity",
+    "is_bridge_day",
+    "is_school_holiday",
+    "day_regime",
+    "is_road_closed",
+    "is_paris_respire",
+    "is_armistice",
+    "is_armistice_parade_hours",
+    "temperature_2m",
+    "precipitation",
+    "rain",
+    "wind_speed_10m",
+    "is_rush_hour",
+    "is_raining",
+    "rain_in_rush_hour",
+    "temp_diff_24h",
+    "q_lag_168h",
+    "q_lag_336h",
+    "q_lag_504h",
+    "q_lag_672h",
+    "q_weekly_mean_3w",
+    "q_weekly_median_4w",
+    "q_weekly_std_3w",
+    "q_regime_hist_mean",
+    "q_smart_expected",
+    "k_lag_168h",
+    "k_lag_336h",
+    "k_lag_504h",
+    "k_lag_672h",
+    "k_weekly_mean_3w",
+    "k_weekly_median_4w",
+    "k_weekly_std_3w",
+    "k_regime_hist_mean",
+    "k_smart_expected",
+    "congestion_index_168h",
+    "q_hour_slope_168h",
+    "k_hour_slope_168h",
+    "holiday_x_rush",
+    "q_hour_p90",
+    "k_hour_p90"
+  ],
+  "data_quality": [
+    {
+      "rue": "Convention",
+      "heures_grille": 9620,
+      "heures_reelles_q_k": 8953,
+      "debut_mesures": "2025-10-01T05:00:00",
+      "derniere_mesure": "2026-11-06T00:00:00",
+      "heures_train": 8785,
+      "troncons": [
+        {
+          "iu_ac": 5671,
+          "libelle_nd_amont": "Lecourbe-Convention",
+          "libelle_nd_aval": "Convention-Blomet"
+        }
+      ]
+    },
+    {
+      "rue": "Saint-Pères",
+      "heures_grille": 9620,
+      "heures_reelles_q_k": 8912,
+      "debut_mesures": "2025-10-21T17:00:00",
+      "derniere_mesure": "2026-11-06T00:00:00",
+      "heures_train": 8912,
+      "troncons": [
+        {
+          "iu_ac": 191,
+          "libelle_nd_amont": "Sts_Peres-Voltaire",
+          "libelle_nd_aval": "Sts_Peres-Universite"
+        }
+      ]
+    }
+  ],
+  "weather_target_hours": 120,
+  "weather_target_missing": 0,
+  "limits": [
+    "Backtest de développement sur quatre fenêtres par rue ; pas un holdout indépendant.",
+    "Météo historique observée, pas une archive de prévisions émises aux dates des plis : performance opérationnelle non certifiée.",
+    "J−7 du pipeline désigne un lag prétraité (lissé et corrigé des jours spéciaux). Le J−7 non lissé est fourni séparément.",
+    "Les statistiques globales concatènent les cibles observées des deux rues ; aucune observation des Champs-Élysées.",
+    "La comparaison de versions réentraîne les deux codes sur les mêmes données et fenêtres actualisées.",
+    "Les gains de précision ne sont pas des économies mesurées."
+  ]
+}

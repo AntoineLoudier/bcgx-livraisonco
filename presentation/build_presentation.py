@@ -1,8 +1,8 @@
 """Build the review deck in PDF and editable PowerPoint from explicit source data.
 
 Run: .venv/bin/python presentation/build_presentation.py
-The original PDF is the source of model scores; no model is rerun here.
-Its extracted figures in assets/ allow regeneration without the original PDF.
+Scores and figures come from refresh_evidence.py after acquisition and training.
+The renderer does not rerun models or modify the evidence snapshots.
 """
 from pathlib import Path
 import csv
@@ -17,22 +17,37 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
 ROOT = Path(__file__).resolve().parent
-SOURCE = ROOT.parent / 'LivraisonCo_CTM.pdf'
 ASSETS = ROOT / 'assets'
 ASSETS.mkdir(exist_ok=True)
+RESULTS = ROOT / 'results'
+evidence = json.loads((ROOT/'scores_source.json').read_text())
+manifest = json.loads((RESULTS/'manifest.json').read_text())
+scores = evidence['scores']
+assert [row['rue'] for row in scores] == ['Convention', 'Saint-Pères']
+global_scores = {row['Target']:row for row in evidence['global_2_rues']}
+revision = manifest['model_revision'][:7]
+feature_count = manifest['feature_count']
+score_by_street = {row['rue']:row for row in scores}
+cv = score_by_street['Convention']
+sp = score_by_street['Saint-Pères']
 W, H = 1280, 720
 INK, GREEN, GRAY = '#1D2B32', '#007A53', '#5A686E'
 LIGHT, RULE, PALE = '#EFF3F1', '#D2DAD7', '#E0EEE7'
 MID, AMBER, WHITE = '#81938D', '#94631F', '#FFFFFF'
 FONTS = Path('/usr/share/fonts/truetype/croscore')
-for name, filename in [('Body', 'Arimo-Regular.ttf'), ('Bold', 'Arimo-Bold.ttf')]:
+font_files = [('Body', 'Arimo-Regular.ttf'), ('Bold', 'Arimo-Bold.ttf')]
+if not all((FONTS / filename).is_file() for _, filename in font_files):
+    from matplotlib import get_data_path
+    FONTS = Path(get_data_path()) / 'fonts' / 'ttf'
+    font_files = [('Body', 'DejaVuSans.ttf'), ('Bold', 'DejaVuSans-Bold.ttf')]
+for name, filename in font_files:
     pdfmetrics.registerFont(TTFont(name, str(FONTS / filename)))
 
 prs = Presentation()
 prs.slide_width, prs.slide_height = Inches(W/96), Inches(H/96)
 prs.core_properties.title = 'LivraisonCo — Résultats et décision de pilote'
 prs.core_properties.author = 'Les Architectes'
-pdf = canvas.Canvas(str(ROOT / 'LivraisonCo_business.pdf'), pagesize=(W, H))
+pdf = canvas.Canvas(str(ROOT / 'LivraisonCo.pdf'), pagesize=(W, H))
 pdf.setTitle(prs.core_properties.title)
 pdf.setAuthor('Les Architectes')
 slide = None
@@ -139,7 +154,20 @@ def image(path, x, y, w, h):
     slide.shapes.add_picture(str(path), Inches(x/96), Inches(y/96), Inches(w/96), Inches(h/96))
 
 
-def new(section, title, subtitle='', source=''):
+def image_viewport(path, x, y, w, h, top, bottom):
+    """Display a cropped viewport; preserve the approved image file unchanged."""
+    full_h = h/(1-top-bottom)
+    pdf.saveState()
+    clip = pdf.beginPath()
+    clip.rect(x, H-y-h, w, h)
+    pdf.clipPath(clip, stroke=0)
+    pdf.drawImage(str(path), x, H-(y-full_h*top)-full_h, w, full_h)
+    pdf.restoreState()
+    pic = slide.shapes.add_picture(str(path), Inches(x/96), Inches(y/96), Inches(w/96), Inches(h/96))
+    pic.crop_top, pic.crop_bottom = top, bottom
+
+
+def new(section, title, subtitle='', source='', compact=False):
     global slide, page
     if page:
         pdf.showPage()
@@ -149,7 +177,8 @@ def new(section, title, subtitle='', source=''):
     txt(56, 25, 'LIVRAISONCO', 13, GREEN, True, w=200)
     txt(855, 25, section, 13, GRAY, w=370)
     txt(56, 74, title, 35, INK, True, w=1168, leading=40)
-    line(56, 173, 1224, 173, GREEN, 2)
+    if not compact:
+        line(56, 173, 1224, 173, GREEN, 2)
     if subtitle:
         txt(56, 190, subtitle, 18, GRAY, w=1168)
     if source:
@@ -210,32 +239,19 @@ with (ROOT/'scenarios_business.csv').open('w', newline='') as f:
     writer.writeheader()
     writer.writerows(rows)
 
-scores = [
-    {'rue': 'Convention', 'q_j7': 79.1, 'q_ancrage': 74.3, 'q_final': 62.5, 'gain_q': 21.0,
-     'k_j7': 2.81, 'k_final': 2.11, 'gain_k': 24.9},
-    {'rue': 'Saint-Pères', 'q_j7': 83.2, 'q_ancrage': 91.4, 'q_final': 80.4, 'gain_q': 3.3,
-     'k_j7': 2.60, 'k_final': 2.22, 'gain_k': 14.8},
-]
-(ROOT/'scores_source.json').write_text(json.dumps({
-    'source': 'LivraisonCo_CTM.pdf (support initial non distribué), page 13',
-    'statut': 'Transcription des résultats du support ; pas de nouveau calcul de backtest',
-    'unites': {'q': 'RMSE en véhicules/heure', 'k': 'RMSE en points de pourcentage'},
-    'scores': scores,
-}, ensure_ascii=False, indent=2)+'\n')
-
 # 1 — Recommendation memo, evidence and economic question.
 new('Synthèse et recommandation',
     'Réduire les heures de livraison en adaptant les créneaux ;\ncommencer le pilote sur Convention',
     'Le modèle améliore la prévision du trafic. La prochaine étape est de mesurer son effet sur les tournées.',
-    'Sources : support du 5 novembre, p. 7 et 13. Simulation économique ; gains de temps et économies non observés.')
+    f'Source : acquisition du 6 novembre, modèle {revision}. Gains face à J−7 prétraité. Simulation économique ; économies non observées.')
 line(841, 247, 841, 577)
 for y, n, title, body in [
     (247, '01', 'Un premier cas d’usage sur Convention',
-     '−21 % de RMSE sur le débit et −25 % sur l’occupation face à J−7. Saint-Pères permet de tester un cas où le gain est plus faible.'),
+     f'−{dec(cv["gain_q"],0)} % de RMSE sur le débit et −{dec(cv["gain_k"],0)} % sur l’occupation face à J−7 prétraité. Gain de débit plus modeste sur Saint-Pères.'),
     (362, '02', 'Une décision précise à tester',
      'Comparer les créneaux d’une même tournée, puis choisir le moins coûteux parmi ceux compatibles avec les contraintes clients.'),
-    (477, '03', 'Un périmètre à exclure du pilote autonome',
-     'Champs-Élysées : aucune mesure récente. Une validation de 2025 ne suffit pas pour automatiser une décision en novembre 2026.'),
+    (477, '03', 'Deux rues dans le périmètre évalué',
+     'Convention et Saint-Pères : 240 lignes horaires à prévoir du 7 au 11 novembre, avec q et k. Champs-Élysées est hors évaluation.'),
 ]:
     txt(56, y, n, 24, GREEN, True, w=45)
     txt(111, y, title, 24, INK, True, w=690)
@@ -248,11 +264,13 @@ txt(877, 521, 'À vérifier : le temps libéré peut-il réduire les heures pay�
 conclusion('Décision proposée : autoriser un pilote de planification et l’accès aux données de tournées.')
 note('La recommandation',
      'Ouvrir sur le coût horaire de la livraison et la décision à prendre, sans annoncer d’économies déjà réalisées. '
-     'Convention est le premier candidat sur la base des gains reportés, pas une garantie de rentabilité ou de significativité statistique. '
-     'Les gains arrondis 21 % et 25 % correspondent à 21,0 % et 24,9 % dans le support source. Saint-Pères peut être un second site, '
+     'Convention est le premier candidat sur la base du backtest recalculé, pas une garantie de rentabilité ou de significativité statistique. '
+     f'Les gains exacts sont {dec(cv["gain_q"],2)} % sur q et {dec(cv["gain_k"],2)} % sur k face au J−7 prétraité. Saint-Pères peut être un second site, '
      'avec son propre groupe témoin : ce n’est pas un contrôle interchangeable de Convention. '
      '1 h/jour × 10 €/h × 250 jours = 2 500 €/an, avant coût de solution. Le taux 10 €/h vient du cas ; les 250 jours sont une hypothèse. '
      'À heures payées constantes, le gain est de la capacité ; ne pas l’appeler économie de trésorerie. '
+     'Selon la précision de périmètre donnée par l’utilisateur, les Champs-Élysées sont exclus de tous les scores et graphiques de résultat du support. '
+     'Le pipeline officiel conserve son export de 360 lignes, mais le périmètre évalué correspond à 240 lignes, chacune portant q et k. '
      'Équipe : Antoine Loudier, Amin Belfkira, Baptiste Dejardin, Joseph Bouteiller, Louis Jamin.')
 
 # 2 — Unit economics: derivation + sensitivity, no invented investment quote.
@@ -303,16 +321,15 @@ note('L’économie dépend de la récupération des heures',
      'Les 6 k€ initiaux et 4 k€/an de la version précédente sont retirés : ils n’étaient étayés par aucun chiffrage technique. '
      'Aucun lien empirique entre gain de RMSE et réduction du temps de conduite n’est estimé.')
 
-# 3 — Show heterogeneity and baseline difficulty instead of pooling mixed periods.
-new('Performance | Résultats reportés',
-    'Le gain sur le débit atteint 21 % sur Convention,\nmais seulement 3 % sur Saint-Pères',
-    'RMSE sur quatre fenêtres de cinq jours ; comparaison au trafic de la même heure à J−7.',
-    'Source : support initial, p. 13. Pourcentages reportés avant arrondi. Validation sur cibles observées selon le support ; incertitude non fournie.')
+# 3 — Refreshed two-street performance, with explicit reference and scope.
+new('Performance | Deux rues évaluées',
+    f'L’erreur de débit baisse de {dec(cv["gain_q"],0)} % sur Convention,\ncontre {dec(sp["gain_q"],0)} % sur Saint-Pères face à J−7 prétraité',
+    'Quatre fenêtres de cinq jours par rue ; cibles observées uniquement ; acquisition actualisée le 6 novembre.',
+    f'Source : results/scores_2_rues.csv · modèle {revision}. Backtest de développement avec météo historique observée.')
 txt(56, 243, 'Débit q — RMSE (véhicules/heure)', 23, INK, True, w=725)
-# Grouped horizontal bars on a shared zero-based scale.
-for x, col, name in [(56, '#BDC7C2', 'J−7'), (182, MID, 'Ancrage'), (368, GREEN, 'Modèle final')]:
+for x, col, name in [(56, '#BDC7C2', 'J−7 prétraité'), (244, MID, 'Ancrage'), (412, GREEN, 'Modèle final')]:
     rect(x, 284, 16, 12, col)
-    txt(x+25, 279, name, 18, GRAY, w=160)
+    txt(x+25, 279, name, 18, GRAY, w=165)
 bar_x, scale = 259, 4.35
 for i, data in enumerate(scores):
     y = 333+i*143
@@ -320,9 +337,8 @@ for i, data in enumerate(scores):
     for j, (key, color) in enumerate([('q_j7', '#BDC7C2'), ('q_ancrage', MID), ('q_final', GREEN)]):
         yy = y+j*28
         rect(bar_x, yy, data[key]*scale, 18, color)
-        txt(bar_x+data[key]*scale+9, yy-3, dec(data[key]), 18, color if j==2 else GRAY,
-            j==2, w=80)
-    txt(56, y+57, f'−{dec(data["gain_q"])} % vs J−7', 18, GREEN, True, w=197)
+        txt(bar_x+data[key]*scale+9, yy-3, dec(data[key]), 18, color if j==2 else GRAY, j==2, w=80)
+    txt(56, y+57, f'−{dec(data["gain_q"])} %', 19, GREEN, True, w=197)
 for tick in [0, 20, 40, 60, 80, 100]:
     xx = bar_x+tick*scale
     line(xx, 584, xx, 589, GRAY)
@@ -337,47 +353,52 @@ for i, data in enumerate(scores):
     txt(822, y+31, f'{dec(data["k_j7"], 2)} → {dec(data["k_final"], 2)}', 23, INK, w=200)
     txt(1059, y+31, f'−{dec(data["gain_k"])} %', 23, GREEN, True, w=164)
 line(822, 497, 1224, 497)
-txt(822, 515, 'Champs-Élysées : à part', 21, AMBER, True, w=400)
-txt(822, 549, 'Validation en 2025 ; capteur muet depuis le 19/11/2025. Performance 2026 non démontrée.', 20, GRAY, w=395)
-note('Le score moyen masque les différences',
-     'Tous les chiffres de cette slide sont transcrits de la page 13 du PDF original. Les barres partent de zéro et partagent la même échelle. '
-     'Convention : q 79,1 (J−7), 74,3 (ancrage), 62,5 (final). Saint-Pères : 83,2, 91,4, 80,4. '
-     'Sur Saint-Pères, l’ancrage est moins bon que J−7 : la correction rattrape surtout cette faiblesse avant de produire un gain limité face à J−7. '
-     'C’est la raison de garder une référence simple dans l’expérimentation opérationnelle. '
-     'k : 2,81 à 2,11 sur Convention ; 2,60 à 2,22 sur Saint-Pères. Les variations publiées reposent sur des valeurs avant arrondi. '
-     'La RMSE mesure une erreur ; ces pourcentages ne sont pas des taux d’accuracy. '
-     'Le gain global −9,3 % q / −12,4 % k est conservé en annexe et non utilisé comme preuve de performance contemporaine, '
-     'car il agrège notamment la période 2025 des Champs-Élysées. Pas d’intervalle de confiance ni de nouveau backtest exécuté ici.')
+txt(822, 514, 'Ensemble des deux rues', 21, INK, True, w=400)
+txt(822, 548, f'q : −{dec(global_scores["q"]["Gain_vs_J7_pretraite_pct"])} %   |   k : −{dec(global_scores["k"]["Gain_vs_J7_pretraite_pct"])} %', 23, GREEN, True, w=400)
+txt(822, 587, f'{global_scores["q"]["N"]} heures observées · hors Champs-Élysées', 17, GRAY, w=400)
+note('Résultats actualisés sur le périmètre évalué',
+     'Les scores sont recalculés après réacquisition du trafic et de la météo, prétraitement, features et entraînement du code main. '
+     'Les quatre fenêtres sont sélectionnées par le protocole existant, avec au moins 85 % de cibles observées ; les dates exactes figurent en annexe. '
+     f'Convention : q {dec(cv["q_j7"],2)} → {dec(cv["q_final"],2)} ; k {dec(cv["k_j7"],2)} → {dec(cv["k_final"],2)}. '
+     f'Saint-Pères : q {dec(sp["q_j7"],2)} → {dec(sp["q_final"],2)} ; k {dec(sp["k_j7"],2)} → {dec(sp["k_final"],2)}. '
+     'Le J−7 du pipeline est lissé et corrigé des jours spéciaux : ce n’est pas une simple mesure brute de J−7. '
+     'Une référence non lissée sur la série nettoyée/imputée est fournie séparément dans les résultats, sur les mêmes lignes. '
+     'Le score global est calculé sur toutes les cibles des deux rues réunies, pas en moyennant les pourcentages. '
+     'Il s’agit d’un backtest de développement, avec météo historique observée plutôt que prévisions archivées ; ne pas annoncer un test indépendant '
+     'ni une performance opérationnelle certifiée. La comparaison ancienne/nouvelle version à données identiques est détaillée en annexe.')
 
-# 4 — Technical mechanism, causal timeline, and limits in one page.
-new('Modèle | Principe',
-    'Le profil hebdomadaire fournit le niveau attendu ;\nles arbres apprennent la correction à apporter',
-    'Du 7 au 11 novembre 2026 : 3 rues × 120 heures = 360 lignes, avec débit q et occupation k.',
-    'Source : support initial, p. 4 et 14. Architecture reportée ; disponibilité historique de la météo à vérifier dans les backtests.')
+# 4 — Model updated to the implementation pulled from main.
+new('Modèle | Version actualisée',
+    'Le profil hebdomadaire est lissé ; la correction\nest régularisée différemment selon la rue',
+    f'{feature_count} variables · quatre couples rue/cible évalués · prévisions horaires du 7 au 11 novembre 2026.',
+    f'Source : src/features.py et src/model.py, révision {revision}. Backtest avec météo observée ; validation prospective à compléter.')
 rect(56, 249, 1168, 85, LIGHT)
 txt(77, 272, 'Prévision', 29, INK, True, w=185)
 txt(262, 271, '=', 30, GRAY, w=40)
-txt(320, 272, 'Ancrage calendaire', 29, INK, True, w=355)
+txt(320, 272, 'Ancrage stabilisé', 29, INK, True, w=355)
 txt(693, 271, '+', 30, GRAY, w=40)
 txt(756, 272, 'Correction LightGBM / XGBoost', 29, GREEN, True, w=450)
-line(705, 360, 705, 517)
-txt(56, 360, 'Une référence explicite', 23, INK, True, w=620)
-txt(56, 400, '60 % × J−7 + 25 % × J−14 + 15 % × J−21', 24, INK, w=625)
-txt(56, 443, 'Puis ajustement calendaire, notamment pour le pont et le 11 novembre, à partir de l’historique 2025.', 21, GRAY, w=605)
-txt(751, 360, 'Une correction conditionnelle', 23, INK, True, w=470)
-txt(751, 400, 'Calendrier, météo, historique et état du trafic : 48 variables dans le support initial.', 21, GRAY, w=470)
-txt(751, 465, 'Moyenne des deux corrections apprises ; pondération plus forte des heures récentes.', 21, GRAY, w=470)
-line(56, 547, 1224, 547)
-txt(56, 565, 'Règle de validation', 18, GREEN, True, w=205)
-txt(281, 561, 'À chaque date de prévision, n’utiliser que l’information disponible à cette date.\nÉvaluer sur les mesures réelles, y compris les jours où les données sont moins fiables.', 21, INK, w=942)
-note('Expliquer le modèle en une minute',
-     'Décrire la référence, puis la correction. L’ajustement de calendrier et les coefficients de pont hérités de 2025 sont des hypothèses à tester, '
-     'pas des lois de trafic. La moyenne LightGBM/XGBoost concerne les corrections de l’ancrage. '
-     'Il y a six couples rue/cible, chacun associant les deux familles : éviter la formulation ambiguë « six arbres ». '
-     'Le dépôt local consulté est main et ne contient pas les artefacts qui ont produit les scores du support. Cette slide décrit le support fourni, '
-     'elle n’est pas un nouvel audit du pipeline. La validation annoncée doit être confirmée par les artefacts, notamment les vintages météo '
-     'et le traitement des imputations. Les cibles non observées ne sont pas évaluables. '
-     'Ne pas confondre disponibilité du calendrier, causalité des lags et disponibilité d’une prévision météo historique.')
+line(705, 360, 705, 529)
+txt(56, 360, 'Réduire le bruit des historiques', 23, INK, True, w=620)
+txt(56, 400, 'Lissage de J−7 à ±1 h ; remplacement des jours spéciaux ; médiane sur quatre semaines.', 22, GRAY, w=605)
+txt(56, 468, 'L’ancrage mêle la moyenne 60/25/15 et la médiane, puis applique les règles de calendrier.', 21, GRAY, w=605)
+txt(751, 360, 'Limiter les corrections instables', 23, INK, True, w=470)
+txt(751, 400, 'Résidus extrêmes écrêtés à l’entraînement ; profondeur et poids adaptés à chaque rue.', 21, GRAY, w=470)
+txt(751, 468, 'Saint-Pères : correction atténuée à 0,40 sur q. Convention : poids de 1,05 sur q.', 21, GRAY, w=470)
+line(56, 552, 1224, 552)
+txt(56, 572, 'À démontrer ensuite', 18, GREEN, True, w=205)
+txt(281, 567, 'Stabilité sur des fenêtres nouvelles, avec les prévisions météo disponibles\nau moment de la décision et les délais réels de publication du trafic.', 21, INK, w=942)
+note('Ce qui a changé dans la version main',
+     'Le lissage utilise les heures t−169, t−168 et t−167 avec des poids 0,10/0,80/0,10. '
+     'Les jours spéciaux des lags sont remplacés en cascade J−21, puis J−14, puis J−7. '
+     'La moyenne 60/25/15 est mélangée à la médiane J−7/J−14/J−21/J−28 : 90/10 sur Convention et 82/18 sur Saint-Pères. '
+     'Le modèle ajoute les médianes q et k et retire is_summer_holiday de la liste des entrées : 49 variables. '
+     'Les résidus d’entraînement sont écrêtés aux centiles 1 et 99 sur les deux rues. '
+     'La moyenne des corrections LightGBM et XGBoost est pondérée : Convention 1,05 pour q et 1,00 pour k ; Saint-Pères 0,40 pour q et 0,85 pour k. '
+     'L2=4 sur Convention, 5 sur Saint-Pères ; profondeur et nombre d’arbres réduits sur Saint-Pères. '
+     'Le ratio de pont est borné entre 0,75 et 0,95. Pour les deux rues évaluées, un férié applique 0,80 à l’ancrage ; '
+     'le profil de défilé de 2025 ne s’applique qu’aux Champs-Élysées, hors évaluation. Ces coefficients restent des hypothèses de modèle. '
+     'Les variables météo historiques de ce backtest sont observées ; la nouvelle acquisition ne constitue pas une archive des prévisions émises dans le passé.')
 
 # 5 — The missing operational link; economic threshold shown as a real curve.
 new('Passage à la décision',
@@ -386,7 +407,7 @@ new('Passage à la décision',
     'Tarifs du cas : 10 €/h le jour, 14 €/h la nuit (support initial, p. 7). Calcul à travail et autres coûts identiques ; nuit fixée à 5 h.')
 txt(56, 243, 'Ce qui manque entre la prévision et le planning', 23, INK, True, w=660)
 for y, number, title, body in [
-    (292, '1', 'Trafic par rue et par heure', 'Disponible : q et k, sur trois rues et cinq jours.'),
+    (292, '1', 'Trafic par rue et par heure', 'Disponible : q et k, sur deux rues évaluées et cinq jours.'),
     (386, '2', 'Durées de conduite et d’arrêt', 'À calibrer : GPS, arrêts, charge et créneau de passage.'),
     (480, '3', 'Tournées et coûts sous contraintes', 'À intégrer : clients, capacités, horaires et coûts payés.'),
 ]:
@@ -431,51 +452,20 @@ note('Mesurer le maillon manquant',
      'Le coût employeur complet, les contraintes horaires et les restrictions locales doivent être intégrés avant une recommandation. '
      'Le graphe est calculé à partir des hypothèses affichées, pas à partir d’un historique GPS. Aucun moteur de tournée opérationnel n’est revendiqué.')
 
-# 6 — Actual workflow and mockup with decision states, no generic app cards.
-new('Produit | Maquette de travail',
-    'L’exploitation choisit le créneau ; le livreur reçoit\nune tournée validée et remonte les temps réalisés',
-    'Un site de planification avec une vue mobile ; la direction suit le coût par colis et la ponctualité.',
-    'Maquettes conceptuelles. Tournée et horaires illustratifs ; aucune intégration métier ni application déployée à ce stade.')
-# Desktop pane: more workbench than marketing dashboard.
-rect(56, 248, 807, 321, WHITE, RULE)
-rect(56, 248, 807, 42, LIGHT)
-txt(74, 258, 'Planning  /  Lundi 9 novembre', 19, INK, True, w=615)
-txt(76, 310, 'Tournée A · Convention', 23, INK, True, w=620)
-txt(76, 346, 'Créneau', 16, GRAY, True, w=130)
-txt(245, 346, 'Lecture trafic', 16, GRAY, True, w=215)
-txt(495, 346, 'Contraintes clients', 16, GRAY, True, w=260)
-for y, slot, traffic, client, select in [
-    (384, '08 h – 12 h', 'Option issue du modèle', 'À confirmer', True),
-    (429, '12 h – 16 h', 'Option à comparer', 'À confirmer', False),
-]:
-    if select:
-        rect(72, y-7, 773, 43, PALE)
-    txt(77, y, slot, 18, INK, select, w=165)
-    txt(245, y, traffic, 18, GRAY, w=245)
-    txt(495, y, client, 18, AMBER, w=235)
-line(76, 480, 840, 480)
-txt(76, 495, 'Champs-Élysées : donnée ancienne → revue manuelle', 18, AMBER, w=750)
-rect(588, 528, 252, 28, LIGHT)
-txt(604, 532, 'Validation après contrôle', 16, GRAY, w=225)
-# Mobile with verified workflow label; statuses are fictitious explicitly.
-rect(917, 243, 287, 336, INK, radius=15)
-rect(929, 255, 263, 310, WHITE, radius=6)
-txt(949, 278, 'MA TOURNÉE', 13, GREEN, True, w=220)
-txt(949, 310, 'Tournée A', 26, INK, True, w=220)
-txt(949, 352, 'Convention\n08 h – 12 h', 23, INK, w=220)
-txt(949, 417, 'Après validation du planning', 15, GRAY, w=220)
-line(949, 452, 1171, 452)
-for y, word in [(467, 'Enregistrer l’arrivée'), (511, 'Signaler un incident')]:
-    txt(949, y, word, 19, GREEN, True, w=220)
-conclusion('La priorité du premier outil : comparer, valider et enregistrer les durées réellement observées.')
-note('Un outil qui produit aussi les données manquantes',
-     'Parcours proposé : l’exploitation prépare le planning, confronte les options aux engagements clients et valide. '
-     'Le livreur reçoit ensuite la tournée validée et remonte les heures d’arrivée, départ et incident ; les saisies doivent demander peu d’effort. '
-     'Ces événements complètent le GPS pour distinguer circulation et arrêts. La direction consulte le coût par colis livré et la ponctualité. '
-     'Le tableau est une maquette : Tournée A et les statuts sont fictifs, les créneaux ne sont pas optimisés. '
-     'La plage 8–12 h est inspirée du support initial, pas une décision validée. Les contraintes doivent être renseignées avant publication. '
-     'La vue mobile est la suite du flux après validation et non un moyen de contourner le contrôle exploitation. '
-     'Les formes et textes sont éditables dans PowerPoint. Cette tâche livre un support de présentation, pas une application fonctionnelle.')
+# 6 — Approved image, embedded unchanged; viewport trims only the artboard margins.
+new('Produit | Maquette validée', '', compact=True)
+txt(56, 45, 'Illustration des usages exploitation / livreur · Données fictives · Champs-Élysées hors évaluation', 13, GRAY, w=1168)
+mockup = ASSETS/'maquette_exploitation_livreur.png'
+viewport_h = 612
+viewport_w = viewport_h*1586/(992-100-40)
+image_viewport(mockup, (W-viewport_w)/2, 65, viewport_w, viewport_h, 100/992, 40/992)
+note('Maquette validée : du planning à l’exécution',
+     'La maquette graphique séparée validée par l’utilisateur est intégrée comme image dans cette slide. '
+     'Le fichier source n’a pas été modifié : seuls le titre et les marges extérieures de la planche sont masqués dans la mise en page. '
+     'L’exploitation compare les créneaux et vérifie les contraintes ; le livreur consulte ensuite un planning validé et enregistre arrivée ou retard. '
+     'Les deux écrans représentent des étapes successives. La courbe, les horaires et la carte sont illustratifs et ne reprennent pas les prévisions recalculées. '
+     'La ligne Champs-Élysées reste visible dans cette maquette approuvée à titre d’exemple de revue manuelle ; elle ne fait pas partie de l’évaluation. '
+     'Aucune application opérationnelle ni optimisation de tournée n’est revendiquée. L’image est remplaçable dans PowerPoint mais ses textes internes ne sont pas éditables.')
 
 # 7 — Prospective experimental design with observable pass criteria.
 new('Pilote | Protocole proposé',
@@ -516,8 +506,8 @@ note('Une comparaison prospective, pas une démonstration sélectionnée',
 # 8 — Concrete recommendation with gates, no fabricated six-week delivery promise.
 new('Décision et conditions de passage',
     'Engager le pilote sur Convention ; étendre seulement\nsi les gains couvrent les coûts de la solution',
-    'Saint-Pères sert de second cas d’usage ; Champs-Élysées reste sous supervision jusqu’au retour de données fiables.',
-    'Recommandation fondée sur les scores reportés. Ordre des étapes proposé ; charge, budget et calendrier à établir avec l’exploitation.')
+    'Convention et Saint-Pères constituent le périmètre évalué ; Champs-Élysées est exclu des scores.',
+    'Recommandation fondée sur le backtest actualisé. Charge, budget et calendrier à établir avec l’exploitation.')
 for x, title, width in [(56, 'ÉTAPE', 250), (370, 'LIVRABLE ATTENDU', 510), (932, 'RESPONSABLE', 292)]:
     txt(x, 247, title, 15, GRAY, True, w=width)
 for y, stage, deliverable, who in [
@@ -534,50 +524,214 @@ note('Terminer par une demande opérationnelle',
      'Demander l’autorisation de préparer le pilote, les données nécessaires et un interlocuteur responsable des plannings. '
      'Ne pas demander un budget au montant inventé ; établir les coûts d’intégration, d’exploitation et d’accompagnement après cadrage. '
      'Convention est la première priorité selon les résultats disponibles. Saint-Pères peut être un second terrain avec comparaison interne, '
-     'utile pour tester un gain prédictif moindre. Les Champs-Élysées nécessitent une stratégie de données actuelle avant autonomie. '
+     'utile pour tester un gain prédictif moindre. Les Champs-Élysées sont hors évaluation selon le périmètre précisé. '
      'Le solveur et les modèles de durée viennent après l’instrumentation. L’absence de preuve économique ou une dégradation du service '
      'doit conduire à adapter ou arrêter le déploiement, sans avoir à défendre le modèle à tout prix. '
      'Ne pas promettre un calendrier de six semaines ni une puissance statistique avant de connaître les volumes.')
 
-# Original technical evidence in appendices; figures are retained as images.
-source_doc = pymupdf.open(SOURCE) if SOURCE.exists() else None
-appendices = [(2, 'Sources et qualité des données'), (3, 'Spécification du modèle'),
-              (5, 'Prévisions du 7 au 11 novembre : scénarios à confirmer'),
-              (8, 'Réel et prédit par rue'), (9, 'Profils horaires'),
-              (10, 'Relation entre débit et occupation'), (11, 'Importance des variables'),
-              (12, 'Tableau complet des scores'), (13, 'Liste des 48 variables')]
-for idx, title in appendices:
-    new('Annexe | Support du 5 novembre', title,
-        source=(f'Source : LivraisonCo_CTM.pdf, p. {idx+1}. Créneaux exploratoires ; pont et restrictions du 11 novembre 2026 à confirmer.'
-                if idx == 5 else
-                f'Source : LivraisonCo_CTM.pdf, p. {idx+1}. Figure ou tableau d’origine ; résultats non recalculés.'))
-    path = ASSETS/f'annexe_source_{idx+1:02d}.png'
-    if source_doc is not None:
-        p = source_doc[idx]
-        clip = pymupdf.Rect(p.rect.width*.035, p.rect.height*.15, p.rect.width*.965, p.rect.height*.935)
-        p.get_pixmap(matrix=pymupdf.Matrix(3.4, 3.4), clip=clip, alpha=False).save(path)
-    if not path.exists():
-        raise FileNotFoundError(f'Figure manquante : {path}. Restaurer cette figure ou fournir {SOURCE}.')
-    with pymupdf.open(path) as figure:
-        aspect = figure[0].rect.width / figure[0].rect.height
-    h = 451
-    w = h*aspect
-    image(path, (W-w)/2, 190, w, h)
-    note(title, f'Extrait de la page {idx+1} du support fourni, sans modification des chiffres ni recalcul. '
-         'Titre et pied de page d’origine retirés ; corps conservé comme image. Les chiffres et figures internes à cette image ne sont pas éditables. '
-         'Pour interpréter les scores, rappeler que la période des Champs-Élysées est 2025. '
-         'La disponibilité réelle de la météo et l’ensemble du protocole doivent être vérifiés dans les artefacts de validation. '
-         'Pour la prévision du 11 novembre, la fermeture mentionnée dans la figure provient du scénario du support initial : '
-         'aucune restriction 2026 n’a été confirmée ici. Les créneaux affichés restent à valider avec les contraintes clients et les restrictions réelles.')
+# Appendices rebuilt from the current two-street evidence; no legacy score image.
+def read_rows(name):
+    with (RESULTS/name).open() as f:
+        return list(csv.DictReader(f))
+
+
+def short_arc(name):
+    return 'Ensemble 2 rues' if name.startswith('GLOBAL') else name
+
+
+def percent_reduction(value):
+    value = float(value)
+    return ('−' if value >= 0 else '+')+dec(abs(value))+' %'
+
+
+def figure_slide(title, filename, subtitle, source, explanation):
+    new('Annexe | Deux rues évaluées', title, subtitle, source)
+    path = ASSETS/filename
+    with pymupdf.open(path) as doc:
+        ratio = doc[0].rect.width/doc[0].rect.height
+    h = min(416, 1168/ratio)
+    w = h*ratio
+    image(path, (W-w)/2, 232, w, h)
+    note(title, explanation)
+
+
+comparison_rows = read_rows('comparaison_versions.csv')
+comparison_global = {r['Target']:r for r in comparison_rows if r['Arc'].startswith('GLOBAL')}
+new('Annexe | Comparaison des versions',
+    f'À données identiques, la RMSE baisse encore de {dec(float(comparison_global["q"]["Gain_nouvelle_vs_ancienne_pct"]))} %\nsur q et de {dec(float(comparison_global["k"]["Gain_nouvelle_vs_ancienne_pct"]))} % sur k',
+    'Deux versions réentraînées sur les mêmes données actualisées et les mêmes fenêtres ; 944 heures observées.',
+    f'Source : results/comparaison_versions.csv. Ancienne version {manifest["comparison_revision"][:7]} ; nouvelle {revision}.')
+for x, label, w in [(56,'RUE',260),(342,'CIBLE',100),(492,'ANCIENNE RMSE',220),(768,'NOUVELLE RMSE',220),(1054,'BAISSE',170)]:
+    txt(x,247,label,15,GRAY,True,w=w)
+for i,row in enumerate(comparison_rows):
+    y=296+i*47
+    line(56,y-9,1224,y-9)
+    txt(56,y,short_arc(row['Arc']),21,INK,True,w=260)
+    txt(342,y,row['Target'],21,INK,w=100)
+    places=1 if row['Target']=='q' else 2
+    txt(492,y,dec(float(row['RMSE_ancienne_version']),places),22,GRAY,w=220)
+    txt(768,y,dec(float(row['RMSE_nouvelle_version']),places),22,INK,True,w=220)
+    txt(1054,y,percent_reduction(row['Gain_nouvelle_vs_ancienne_pct']),22,GREEN,True,w=170)
+conclusion('Le progrès le plus net concerne le débit de Saint-Pères ; les gains restent à confirmer hors développement.')
+note('Isoler le progrès du code',
+     'Les versions ancienne et nouvelle sont réentraînées sur les mêmes données fraîchement téléchargées, prétraitées avec le même pipeline. '
+     'Les dates, cibles et historiques des plis sont identiques. Les valeurs ne comparent donc pas directement les chiffres de l’ancien PDF aux nouvelles fenêtres. '
+     'Cette comparaison mesure l’effet de la version sur ce backtest ; elle ne constitue pas un test indépendant de la sélection des hyperparamètres. '
+     'Les sorties détaillées et les empreintes de données sont dans results/. Un gain agrégé peut masquer des pertes sur certains plis.')
+
+summary_rows = read_rows('scores_2_rues.csv')
+new('Annexe | Scores détaillés',
+    'Les résultats globaux agrègent uniquement\nConvention et Saint-Pères',
+    'q : RMSE et MAE en véhicules/heure. k : RMSE et MAE en points de pourcentage.',
+    'Source : results/scores_2_rues.csv. Référence = J−7 prétraité. Le J−7 non lissé est aussi disponible dans ce fichier.')
+for x,label,w in [(56,'RUE',250),(322,'CIBLE',90),(424,'N',80),(526,'J−7',140),(726,'MODÈLE',160),(928,'BAISSE',145),(1090,'MAE',134)]:
+    txt(x,247,label,15,GRAY,True,w=w)
+for i,row in enumerate(summary_rows):
+    y=296+i*47
+    line(56,y-9,1224,y-9)
+    places=1 if row['Target']=='q' else 2
+    txt(56,y,short_arc(row['Arc']),21,INK,True,w=250)
+    txt(322,y,row['Target'],21,INK,w=90)
+    txt(424,y,row['N'],21,GRAY,w=80)
+    txt(526,y,dec(float(row['RMSE_J7_pretraite']),places),22,GRAY,w=140)
+    txt(726,y,dec(float(row['RMSE_Modele']),places),22,INK,True,w=160)
+    txt(928,y,percent_reduction(row['Gain_vs_J7_pretraite_pct']),22,GREEN,True,w=145)
+    txt(1090,y,dec(float(row['MAE_Modele']),places),22,INK,w=134)
+conclusion('Le J−7 prétraité intègre déjà le lissage et les jours spéciaux : c’est une référence plus exigeante ici.')
+note('Définition exacte des scores',
+     'La RMSE globale est calculée en concaténant les erreurs des deux rues, avec pondération implicite par le nombre de mesures réelles. '
+     'Convention a 464 heures et Saint-Pères 480, soit 944 heures par cible. Aucun score des Champs-Élysées ne contribue aux valeurs. '
+     'Le gain est 1 − RMSE modèle / RMSE référence, calculé avant arrondi. Le J−7 prétraité reprend les colonnes baseline_q/k de la validation officielle. '
+     'Le CSV contient aussi la référence J−7 non lissée de la série nettoyée/imputée, pour éviter d’assimiler la référence prétraitée à une observation brute.')
+
+fold_rows = [r for r in read_rows('scores_par_fenetre.csv') if r['Target']=='q']
+new('Annexe | Fenêtres de validation',
+    'Quatre fenêtres par rue couvrent plusieurs saisons ;\nle gain n’est pas uniforme sur toutes les périodes',
+    'Plages des premières et dernières cibles observées ; chaque fenêtre nominale couvre cinq jours.',
+    'Source : results/scores_par_fenetre.csv. Heures locales Europe/Paris ; observations imputées exclues.')
+for x,label,w in [(56,'RUE / PLI',240),(320,'PREMIÈRE CIBLE',220),(570,'DERNIÈRE CIBLE',220),(840,'N',60),(946,'RMSE q',110),(1100,'J−7 q',124)]:
+    txt(x,247,label,15,GRAY,True,w=w)
+for i,row in enumerate(fold_rows):
+    y=289+i*39
+    line(56,y-7,1224,y-7)
+    txt(56,y,row['Arc']+' / '+row['Fold'],19,INK,True,w=240)
+    for x,key in [(320,'Start'),(570,'End')]:
+        val=row[key]
+        label=val[8:10]+'/'+val[5:7]+'/'+val[:4]+' '+val[11:16]
+        txt(x,y,label,18,GRAY,w=220)
+    txt(840,y,row['N'],19,GRAY,w=60)
+    txt(946,y,dec(float(row['RMSE_Modele'])),20,INK,True,w=110)
+    txt(1100,y,dec(float(row['RMSE_J7_pretraite'])),20,GRAY,w=124)
+txt(56,615,'Saint-Pères, août : la référence reste meilleure sur q et k. Un gain moyen ne garantit pas chaque fenêtre.',19,AMBER,w=1168)
+note('Lire les fenêtres sans confondre les périodes des rues',
+     'Les plages affichées sont celles des cibles effectivement observées. Des heures manquantes en bord de fenêtre expliquent qu’une plage paraisse plus courte '
+     'que les 120 heures nominales. Les fenêtres sont choisies par le protocole existant, au moins 85 % de mesures et entraînement sur le passé. '
+     'Les horaires ne doivent pas être remplacés par le minimum/maximum commun aux deux rues ou aux Champs-Élysées : ces périodes peuvent différer. '
+     'Saint-Pères perd face à sa référence lors du pli d’août. Les détails q et k se trouvent dans le CSV ; aucune sélection des plis après le calcul.')
+
+new('Annexe | Sources et périmètre',
+    'Les deux rues évaluées disposent de mesures récentes ;\nla météo couvre les 120 heures à prévoir',
+    'Acquisition Open Data Paris et Open-Meteo relancée le 6 novembre 2026.',
+    'Source : results/manifest.json. Dernière mesure à 00 h le 6 novembre en heure de Paris, soit 23 h UTC le 5 novembre.')
+for x,label,w in [(56,'RUE',270),(370,'MESURES q ET k',270),(710,'ENTRAÎNEMENT',230),(1000,'ARC ID',200)]:
+    txt(x,247,label,15,GRAY,True,w=w)
+for i,row in enumerate(manifest['data_quality']):
+    y=296+i*62
+    line(56,y-9,1224,y-9)
+    txt(56,y,row['rue'],23,INK,True,w=270)
+    txt(370,y,str(row['heures_reelles_q_k'])+' h',23,INK,w=270)
+    txt(710,y,str(row['heures_train'])+' h',23,INK,w=230)
+    txt(1000,y,str(row['troncons'][0]['iu_ac']),23,INK,w=200)
+line(56,430,1224,430)
+txt(56,450,'Périmètre évalué',22,GREEN,True,w=310)
+txt(390,450,'Convention et Saint-Pères uniquement ; Champs-Élysées exclu selon la précision reçue.',21,INK,w=820)
+txt(56,517,'Météo de la cible',22,GREEN,True,w=310)
+txt(390,517,f'{manifest["weather_target_hours"]} heures du 7 au 11 novembre, sans valeur manquante. Prévisions actuelles disponibles.',21,INK,w=820)
+txt(56,588,'Limite du backtest',22,AMBER,True,w=310)
+txt(390,588,'Les fenêtres historiques utilisent la météo observée, pas des prévisions archivées à leur date.',21,INK,w=820)
+note('Sources et limites de disponibilité',
+     'Les identifiants et les couples de nœuds exacts sont conservés dans le manifeste. Les données brutes ont été retéléchargées plutôt que réutilisées. '
+     'Les comptes de mesures sont calculés après nettoyage et agrégation horaire ; les doublons de changement d’heure expliquent un éventuel écart au compte brut. '
+     'La complétude de la météo du 7–11 novembre concerne la prévision actuelle. Elle ne résout pas la question des vintages météo des backtests. '
+     'L’export officiel reste compatible avec les trois arcs du code ; ce support et son agrégat d’évaluation portent exclusivement sur les deux rues demandées.')
+
+new('Annexe | Paramètres de la version main',
+    'La nouvelle version stabilise l’ancrage et réduit\nl’amplitude des corrections sur Saint-Pères',
+    f'Implémentation {revision} ; coefficients fixés par le code et évalués dans le backtest.',
+    'Sources : src/features.py, src/model.py ; versions et empreintes dans results/manifest.json.')
+for x,label,w in [(56,'PARAMÈTRE',620),(710,'CONVENTION',230),(1000,'SAINT-PÈRES',224)]:
+    txt(x,247,label,15,GRAY,True,w=w)
+parameter_rows=[
+    ('Moyenne 3 semaines / médiane 4 semaines','90 % / 10 %','82 % / 18 %'),
+    ('Poids de la correction q / k','1,05 / 1,00','0,40 / 0,85'),
+    ('Arbres par famille','400','350'),
+    ('Profondeur LightGBM / XGBoost','5 / 4','4 / 3'),
+    ('Régularisation L2','4','5'),
+    ('Résidus : écrêtage entraînement','P1 – P99','P1 – P99'),
+]
+for i,(name,a,b) in enumerate(parameter_rows):
+    y=290+i*45
+    line(56,y-8,1224,y-8)
+    txt(56,y,name,21,INK,w=620)
+    txt(710,y,a,22,INK,True,w=230)
+    txt(1000,y,b,22,INK,True,w=224)
+txt(56,584,'Lissage J−7 : 10 % à h−1, 80 % à h, 10 % à h+1. Férié : ancrage × 0,80 sur les deux rues.\nLe ratio de pont est borné entre 0,75 et 0,95 ; ces règles restent des hypothèses de modèle.',19,GRAY,w=1168)
+note('Détail de la correction',
+     'La correction est la moyenne 50/50 LightGBM et XGBoost multipliée par le poids de la rue et de la cible. '
+     'Le lissage horaire à J−7 utilise uniquement des valeurs âgées de plus de six jours et reste disponible à horizon cinq jours hors délai de publication. '
+     'Les heures spéciales sont remplacées en cascade inverse. Les règles calendrier ne doivent pas être présentées comme des effets causalement estimés. '
+     'Le profil Armistice 2025 spécifique aux Champs-Élysées ne s’applique pas aux deux rues évaluées.')
+
+figure_slide('Prévisions actualisées du 7 au 11 novembre', 'current_forecast.png',
+    '240 lignes horaires sur deux rues ; zone beige = 11 novembre. Prévisions, pas observations futures.',
+    f'Source : results/previsions_7_11_novembre_2_rues.csv · modèle {revision}. Hypothèses de pont et de férié intégrées au modèle.',
+    'Les courbes proviennent des modèles finaux réentraînés après acquisition. Aucun repli sur l’ancrage n’a été utilisé pour dessiner ces résultats. '
+    'La courbe de la maquette produit reste illustrative et distincte de ces prévisions. Aucun itinéraire ni créneau optimal n’est déduit automatiquement de ces seules courbes.')
+figure_slide('Dernière fenêtre : mesures et prédictions', 'current_oof.png',
+    'Fenêtre du 1er au 6 novembre ; seules les heures dont les cibles sont observées sont tracées.',
+    'Source : results/predictions_validation_2_rues.csv. Référence = J−7 prétraité ; même backtest que les scores.',
+    'Deux rues et deux cibles, même dernière fenêtre nominale. Les trous éventuels correspondent à des cibles non observées. '
+    'Il s’agit de prédictions hors entraînement temporel dans ce backtest de développement, pas d’un holdout indépendant du travail de sélection.')
+figure_slide('Profils horaires sur les mesures actualisées', 'current_profiles.png',
+    'Moyennes des jours de semaine et des week-ends ; description de l’historique utilisé.',
+    'Source : features_train.csv après réacquisition et prétraitement ; empreinte conservée dans le manifeste.',
+    'Profils descriptifs calculés sur les cibles réelles des deux rues. Ils ne constituent pas une évaluation du modèle et ne tiennent pas lieu de prévision de tournée.')
+figure_slide('Débit et occupation apportent des informations différentes', 'current_fundamental.png',
+    'Mesures réelles des deux rues. Un faible débit peut correspondre à une route vide ou à une congestion.',
+    'Source : features_train.csv après réacquisition et prétraitement ; pas de seuil universel de saturation imposé.',
+    'Les nuages de points sont descriptifs. L’occupation n’est ni une vitesse ni directement un temps de parcours. '
+    'Un seuil de congestion opérationnel doit être calibré avec des mesures terrain.')
+figure_slide('Les variables expliquent la correction, pas tout le trafic', 'current_importance.png',
+    'Impact absolu moyen de la composante LightGBM, après son poids de 50 % et le poids résiduel de la rue.',
+    'Source : results/importance_variables.csv. Échantillon des 2 000 dernières lignes d’entraînement par rue ; XGBoost et ancrage non expliqués.',
+    'Les valeurs SHAP du pipeline portent sur le résidu LightGBM. Ici elles sont multipliées par 0,5 et par le poids résiduel du modèle pour exprimer '
+    'la contribution de cette composante avant clipping de la prédiction. Elles ne couvrent ni XGBoost, ni l’ancrage, ni le post-traitement non linéaire. '
+    'Ce graphique décrit les modèles finaux sur un échantillon d’entraînement, pas la causalité des variables ni un effet économique.')
+
+new('Annexe | Variables du modèle',
+    f'{feature_count} variables entrent dans les arbres ;\nles deux médianes hebdomadaires ont été ajoutées',
+    'is_summer_holiday est retiré des entrées ; le calendrier, la météo et les historiques restent disponibles.',
+    f'Source : FEATURE_COLS dans src/model.py, modèle {revision}. Liste complète dans results/manifest.json.')
+feature_groups=[
+    ('Calendrier · 13',manifest['feature_columns'][:13]),
+    ('Événements · 4',manifest['feature_columns'][13:17]),
+    ('Météo / interactions · 8',manifest['feature_columns'][17:25]),
+    ('Historique q / k · 20',manifest['feature_columns'][25:43]+manifest['feature_columns'][-2:]),
+    ('Variables croisées · 4',manifest['feature_columns'][43:47]),
+]
+assert sum(len(vals) for _,vals in feature_groups)==feature_count
+for y,(name,vals) in zip([247,312,354,416,555],feature_groups):
+    line(56,y-9,1224,y-9)
+    txt(56,y,name,21,INK,True,w=285)
+    txt(360,y,', '.join(vals),17,GRAY,w=864,leading=22)
+note('Variables exactes',
+     'La liste est extraite du code exécuté, conservée dans le manifeste, puis répartie entre familles. '
+     'Les variables is_road_closed, is_paris_respire et is_armistice_parade_hours peuvent être constantes sur certaines rues ; '
+     'leur présence dans la liste ne signifie pas qu’elles contribuent à leurs modèles. Aucun gain causal n’est attribué individuellement à l’ajout des médianes.')
+
+appendix_count = page-8
 
 pdf.save()
-prs.save(ROOT/'LivraisonCo_business.pptx')
+prs.save(ROOT/'LivraisonCo.pptx')
 (ROOT/'notes_orateur.md').write_text('# LivraisonCo — Notes de présentation\n\n'+ '\n'.join(notes))
-(ROOT/'layout_bounds.json').write_text(json.dumps(text_bounds, ensure_ascii=False, indent=2)+'\n')
-# A short PDF is convenient when sharing only the decision narrative.
-complete = pymupdf.open(ROOT/'LivraisonCo_business.pdf')
-short = pymupdf.open()
-short.insert_pdf(complete, from_page=0, to_page=7)
-short.set_metadata({'title': prs.core_properties.title, 'author': 'Les Architectes'})
-short.save(ROOT/'LivraisonCo_synthese.pdf')
-print(f'{page} slides : 8 principales et {len(appendices)} annexes. PDF court : 8 pages.')
+print(f'{page} slides : 8 principales et {appendix_count} annexes. PDF et PowerPoint complets.')

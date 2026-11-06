@@ -1,30 +1,66 @@
 {
-  "source": "LivraisonCo_CTM.pdf (support initial non distribué), page 13",
-  "statut": "Transcription des résultats du support ; pas de nouveau calcul de backtest",
-  "unites": {
-    "q": "RMSE en véhicules/heure",
-    "k": "RMSE en points de pourcentage"
-  },
+  "source": "results/scores_2_rues.csv",
+  "statut": "Recalcul après acquisition ; backtest de développement",
+  "revision": "c00b66133b273504329247b86f0ff398293c96ae",
+  "baseline": "J−7 prétraité : lissage et remplacement des jours spéciaux",
   "scores": [
     {
       "rue": "Convention",
-      "q_j7": 79.1,
-      "q_ancrage": 74.3,
-      "q_final": 62.5,
-      "gain_q": 21.0,
-      "k_j7": 2.81,
-      "k_final": 2.11,
-      "gain_k": 24.9
+      "q_j7": 71.18941690660147,
+      "q_ancrage": 68.6987263545188,
+      "q_final": 56.97177968085082,
+      "gain_q": 19.971560160977,
+      "k_j7": 2.7665109882125423,
+      "k_ancrage": 2.4976545514622535,
+      "k_final": 2.0500946719972446,
+      "gain_k": 25.89602279794949,
+      "q_previous": 57.36307324693581,
+      "k_previous": 2.1360636727306392,
+      "gain_previous_q": 0.6821349414117939,
+      "gain_previous_k": 4.0246459799344825,
+      "n": 464
     },
     {
       "rue": "Saint-Pères",
-      "q_j7": 83.2,
-      "q_ancrage": 91.4,
-      "q_final": 80.4,
-      "gain_q": 3.3,
-      "k_j7": 2.6,
-      "k_final": 2.22,
-      "gain_k": 14.8
+      "q_j7": 79.61293120350999,
+      "q_ancrage": 77.78805991116901,
+      "q_final": 75.8472867298221,
+      "gain_q": 4.7299407480199225,
+      "k_j7": 2.8605803491439854,
+      "k_ancrage": 2.52765972191268,
+      "k_final": 2.3406906053598555,
+      "gain_k": 18.174275158525244,
+      "q_previous": 80.99474310438343,
+      "k_previous": 2.3667991240164934,
+      "gain_previous_q": 6.355296871461713,
+      "gain_previous_k": 1.1031151056170474,
+      "n": 480
+    }
+  ],
+  "global_2_rues": [
+    {
+      "Arc": "GLOBAL (2 rues évaluées)",
+      "Target": "q",
+      "N": 944,
+      "RMSE_J7_pretraite": 75.58995356863552,
+      "RMSE_J7_non_lisse": 84.31413076081041,
+      "RMSE_Ancrage": 73.46109347540937,
+      "RMSE_Modele": 67.23498557719533,
+      "MAE_Modele": 43.50346686213569,
+      "Gain_vs_J7_pretraite_pct": 11.053013789529443,
+      "Gain_vs_J7_non_lisse_pct": 20.256563199431742
+    },
+    {
+      "Arc": "GLOBAL (2 rues évaluées)",
+      "Target": "k",
+      "N": 944,
+      "RMSE_J7_pretraite": 2.8147357596617053,
+      "RMSE_J7_non_lisse": 2.9734898422473273,
+      "RMSE_Ancrage": 2.5129561887503886,
+      "RMSE_Modele": 2.202651453308612,
+      "MAE_Modele": 1.1659121137168786,
+      "Gain_vs_J7_pretraite_pct": 21.745711093913055,
+      "Gain_vs_J7_non_lisse_pct": 25.923693364835078
     }
   ]
 }
