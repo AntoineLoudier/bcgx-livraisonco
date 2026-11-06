@@ -165,7 +165,7 @@ def add_causal_lags_and_sncf_patterns(df: pd.DataFrame) -> pd.DataFrame:
     - Nettoyage en cascade inversée (J-21 -> J-14 -> J-7) des jours fériés, ponts et fermetures.
     - Lissage causal de phase +-1h à J-7 (t-169h, t-168h, t-167h) et hybridation Moyenne/Médiane
       pour filtrer le bruit haute fréquence sur Saint-Pères et Convention.
-    - Les ratios A-1 du 10 et 11 novembre 2025 ne sont appliqués qu'après le 12 novembre 2025.
+    - Application du profil A-1 du défilé du 11 novembre 2025 réservée aux Champs-Élysées (évite les artefacts capteurs 2025 sur Convention et Saint-Pères).
     """
     print("4/5 - Calcul des Clean Lags 100% causaux, stabilisation médiane/phase et pattern A-1...")
     df = df.copy()
@@ -235,7 +235,7 @@ def add_causal_lags_and_sncf_patterns(df: pd.DataFrame) -> pd.DataFrame:
         df.loc[mask_ce_dead, f"{target}_lag_672h"] = df.loc[mask_ce_dead, "w1"]
         df.drop(columns=["w1", "w2", "w3"], inplace=True)
 
-        # Moyenne pondérée sur 3 semaines (60/25/15) stabilisée par 15% de médiane sur 4 semaines (J-7 à J-28)
+        # Moyenne pondérée sur 3 semaines (60/25/15) stabilisée par la médiane sur 4 semaines (J-7 à J-28)
         weighted_3w = (
             0.60 * df[f"{target}_lag_168h"]
             + 0.25 * df[f"{target}_lag_336h"]
@@ -299,9 +299,10 @@ def add_causal_lags_and_sncf_patterns(df: pd.DataFrame) -> pd.DataFrame:
         is_after_nov2025 = df["t_1h"] >= "2025-11-12"
 
         # 1. Ponts après nov 2025 : modulation par bridge_intensity
+        # Bornage [0.75, 0.95] de r_1d pour qu'un pont abaisse toujours légèrement le trafic (évite l'artefact d'initialisation oct 2025 de Saint-Pères)
         mask_bridge_future = (df["bridge_intensity"] > 0) & is_after_nov2025
         w = df.loc[mask_bridge_future, "bridge_intensity"]
-        r_1d = df.loc[mask_bridge_future, "ratio_bridge_1d_a1"].fillna(0.85)
+        r_1d = df.loc[mask_bridge_future, "ratio_bridge_1d_a1"].fillna(0.85).clip(0.75, 0.95)
         smart_val.loc[mask_bridge_future] = df.loc[mask_bridge_future, f"{target}_weekly_mean_3w"] * (1.0 - w * (1.0 - r_1d))
 
         # Pont en 2025 (train) : coefficient a priori
@@ -310,15 +311,15 @@ def add_causal_lags_and_sncf_patterns(df: pd.DataFrame) -> pd.DataFrame:
             1.0 - 0.15 * df.loc[mask_bridge_2025, "bridge_intensity"]
         )
 
-        # 2. Jours fériés hors Armistice 2026 : abattement relatif de 20% par rapport au niveau des 3 dernières semaines
-        mask_holidays_causal = (df["is_public_holiday"] == 1) & (~((df["is_armistice"] == 1) & is_after_nov2025))
+        # 2. Jours fériés (incluant le 11 nov sur Convention et Saint-Pères où il n'y a pas de défilé militaire)
+        is_ce_armistice_2026 = (df["arc"] == "Champs-Elysées") & (df["is_armistice"] == 1) & is_after_nov2025
+        mask_holidays_causal = (df["is_public_holiday"] == 1) & (~is_ce_armistice_2026)
         smart_val.loc[mask_holidays_causal] = df.loc[mask_holidays_causal, f"{target}_weekly_mean_3w"] * 0.80
 
-        # 3. Armistice en 2026 (11 nov 2026) : profil exact A-1 du 11 nov 2025
-        mask_armistice_2026 = (df["is_armistice"] == 1) & is_after_nov2025
-        smart_val.loc[mask_armistice_2026] = (
-            df.loc[mask_armistice_2026, f"{target}_weekly_mean_3w"]
-            * df.loc[mask_armistice_2026, "ratio_armistice_a1"].fillna(0.5)
+        # 3. Armistice en 2026 sur les Champs-Élysées uniquement : profil exact A-1 du défilé du 11 nov 2025
+        smart_val.loc[is_ce_armistice_2026] = (
+            df.loc[is_ce_armistice_2026, f"{target}_weekly_mean_3w"]
+            * df.loc[is_ce_armistice_2026, "ratio_armistice_a1"].fillna(0.5)
         )
 
         df[f"{target}_smart_expected"] = smart_val.fillna(df[f"{target}_lag_168h"])
